@@ -267,12 +267,12 @@ func (licenceCollection *LicenceCollection) GetCompanies() []string {
 	return companies
 }
 
-type filterfn func(licenceRow *LicenceRow) bool
+type FilterFn func(licenceRow *LicenceRow) bool
 
-// filter returns a filtered LicenceCollection. Every filterFunc is called on
+// Filter returns a filtered LicenceCollection. Every filterFunc is called on
 // each LicenceRow in LicenceCollection. Every filterFunc has to return true
 // for the LicenceRow to be added to the filtered LicenceCollection.
-func (licenceCollection *LicenceCollection) filter(filterFuncs ...filterfn) *LicenceCollection {
+func (licenceCollection *LicenceCollection) Filter(filterFuncs ...FilterFn) *LicenceCollection {
 	filtered := LicenceCollection{licenceCollection.header, make(LicenceRows, 0)}
 
 Loop:
@@ -289,9 +289,9 @@ Loop:
 	return &filtered
 }
 
-// filterInPlace is as filter but overwrites the original backing array with the
+// FilterInPlace is as Filter but overwrites the original backing array with the
 // filtered.
-func (licenceCollection *LicenceCollection) filterInPlace(filterFuncs ...filterfn) *LicenceCollection {
+func (licenceCollection *LicenceCollection) FilterInPlace(filterFuncs ...FilterFn) *LicenceCollection {
 	filteredRows := licenceCollection.rows[:0]
 
 Loop:
@@ -309,12 +309,12 @@ Loop:
 }
 
 // FilterPointToPoint is a specialised version of FilterProductCodes that
-// omits the intermediate filterfn function.
+// omits the intermediate FilterFn function.
 func FilterPointToPoint(row *LicenceRow) bool {
 	return row.ProductCode == "301010"
 }
 
-// FilterProductCodes returns a function with the filterfn signature. This
+// FilterProductCodes returns a function with the FilterFn signature. This
 // function returns true a LicenceRow ProductCode matches any product code in
 // productCodes.
 func FilterProductCodes(productCodes ...string) func(*LicenceRow) bool {

@@ -136,7 +136,7 @@ func TestWTR(t *testing.T) {
 
 	t.Run("filter Product Code",
 		func(t *testing.T) {
-			licenceCollectionP2P = licenceCollection.filter(FilterPointToPoint)
+			licenceCollectionP2P = licenceCollection.Filter(FilterPointToPoint)
 
 			if !compareHeaders(licenceCollectionP2P, licenceCollection) {
 				t.Fatal("Filter did not copy headers")
@@ -148,7 +148,7 @@ func TestWTR(t *testing.T) {
 			}
 
 			// Apply the same filter again.
-			licenceCollection3 := licenceCollectionP2P.filter(FilterPointToPoint)
+			licenceCollection3 := licenceCollectionP2P.Filter(FilterPointToPoint)
 
 			if !compareHeaders(licenceCollection3, licenceCollectionP2P) {
 				t.Fatal("2nd Filter did not copy headers")
@@ -159,7 +159,7 @@ func TestWTR(t *testing.T) {
 				t.Fatal("2nd Filter filtered (it should not have done anything")
 			}
 
-			licenceCollection4 := licenceCollection.filter(FilterProductCodes("301010"))
+			licenceCollection4 := licenceCollection.Filter(FilterProductCodes("301010"))
 			if !compareHeaders(licenceCollection4, licenceCollectionP2P) {
 				t.Fatal("3rd Filter did not copy headers")
 			}
@@ -172,7 +172,7 @@ func TestWTR(t *testing.T) {
 
 	t.Run("filterInPlace Product Code",
 		func(t *testing.T) {
-			licenceCollectionP2P = licenceCollection.filter(FilterPointToPoint)
+			licenceCollectionP2P = licenceCollection.Filter(FilterPointToPoint)
 
 			if !compareHeaders(licenceCollectionP2P, licenceCollection) {
 				t.Fatal("Filter did not copy headers")
@@ -187,7 +187,7 @@ func TestWTR(t *testing.T) {
 			copy(licenceRows, licenceCollection.rows)
 			licenceCollection2 := &LicenceCollection{licenceCollection.header, licenceRows}
 
-			licenceCollection2.filterInPlace(FilterProductCodes("301010"))
+			licenceCollection2.FilterInPlace(FilterProductCodes("301010"))
 
 			if compareRowLengths(licenceCollection, licenceCollection2) {
 				t.Fatalf("FilterInPlace did not work (1) %v %v %v",
@@ -224,8 +224,8 @@ func TestWTR(t *testing.T) {
 				t.Fatalf("Could not find company \"%v\"", company2)
 			}
 
-			licenceCollectionCustomer1 := licenceCollection.filter(FilterCompanies(company1))
-			licenceCollectionCustomer2 := licenceCollection.filter(FilterCompanies(company2))
+			licenceCollectionCustomer1 := licenceCollection.Filter(FilterCompanies(company1))
+			licenceCollectionCustomer2 := licenceCollection.Filter(FilterCompanies(company2))
 
 			if !compareHeaders(licenceCollectionCustomer1, licenceCollection) {
 				t.Fatal("Filter 1 did not copy headers")
@@ -243,7 +243,7 @@ func TestWTR(t *testing.T) {
 				t.Fatal("Filter 2 did not filter")
 			}
 
-			licenceCollectionCustomerBoth := licenceCollection.filter(FilterCompanies(company1, company2))
+			licenceCollectionCustomerBoth := licenceCollection.Filter(FilterCompanies(company1, company2))
 
 			if !compareHeaders(licenceCollectionCustomerBoth, licenceCollection) {
 				t.Fatal("Filter 3 did not copy headers")

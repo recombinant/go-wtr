@@ -13,3 +13,6 @@
 
 # Jetbrains GoLand
 .idea/
+
+# Overly large test data
+test_data/WTR.csv
