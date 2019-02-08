@@ -17,14 +17,14 @@ func compareHeaders(collection1 *LicenceCollection, collection2 *LicenceCollecti
 	if collection1 == collection2 {
 		return false // Should not compare collection to itself.
 	}
-	return len(collection1.header) == len(collection2.header)
+	return len(collection1.Header) == len(collection2.Header)
 }
 
 func compareRowLengths(collection1 *LicenceCollection, collection2 *LicenceCollection) bool {
 	if collection1 == collection2 {
 		return false // Should not compare collection to itself.
 	}
-	return len(collection1.rows) == len(collection2.rows)
+	return len(collection1.Rows) == len(collection2.Rows)
 }
 
 // TestWTR does all the testing as the initial load of the data is expensive.
@@ -76,7 +76,7 @@ func TestWTR(t *testing.T) {
 
 	// --------------------------------------------------------- load the data
 	licenceCollection := LoadData(dataPath)
-	if len(licenceCollection.rows) == 0 {
+	if len(licenceCollection.Rows) == 0 {
 		t.Fatal("Failed to read licence file")
 	}
 
@@ -106,7 +106,7 @@ func TestWTR(t *testing.T) {
 			foundCodes := make(map[string]bool)
 
 			// Check the Product Code is known
-			for _, row := range licenceCollection.rows {
+			for _, row := range licenceCollection.Rows {
 				productCode := row.ProductCode
 				if _, ok := knownCodes[productCode]; !ok {
 					t.Fatalf("unknown Product Code: \"%v\"", productCode)
@@ -122,7 +122,7 @@ func TestWTR(t *testing.T) {
 
 			// Check that Product Codes are the correct length
 			// Check that there is a Product Description
-			for _, row := range licenceCollection.rows {
+			for _, row := range licenceCollection.Rows {
 				if len(row.ProductCode) != 6 {
 					t.Fatalf("incorrect Product Code length: \"%v\"", row.ProductCode)
 				}
@@ -183,17 +183,17 @@ func TestWTR(t *testing.T) {
 				t.Fatal("Filter did not filter")
 			}
 
-			licenceRows := make([]*LicenceRow, len(licenceCollection.rows))
-			copy(licenceRows, licenceCollection.rows)
-			licenceCollection2 := &LicenceCollection{licenceCollection.header, licenceRows}
+			licenceRows := make([]*LicenceRow, len(licenceCollection.Rows))
+			copy(licenceRows, licenceCollection.Rows)
+			licenceCollection2 := &LicenceCollection{licenceCollection.Header, licenceRows, false}
 
 			licenceCollection2.FilterInPlace(FilterProductCodes("301010"))
 
 			if compareRowLengths(licenceCollection, licenceCollection2) {
 				t.Fatalf("FilterInPlace did not work (1) %v %v %v",
-					len(licenceCollection.rows),
-					len(licenceCollection2.rows),
-					len(licenceCollectionP2P.rows))
+					len(licenceCollection.Rows),
+					len(licenceCollection2.Rows),
+					len(licenceCollectionP2P.Rows))
 			}
 			if !compareRowLengths(licenceCollectionP2P, licenceCollection2) {
 				t.Fatal("FilterInPlace did not work (2)")
@@ -234,12 +234,12 @@ func TestWTR(t *testing.T) {
 				t.Fatal("Filter 2 did not copy headers")
 			}
 
-			rowCount1 := len(licenceCollectionCustomer1.rows)
-			rowCount2 := len(licenceCollectionCustomer2.rows)
-			if rowCount1 == len(licenceCollection.rows) {
+			rowCount1 := len(licenceCollectionCustomer1.Rows)
+			rowCount2 := len(licenceCollectionCustomer2.Rows)
+			if rowCount1 == len(licenceCollection.Rows) {
 				t.Fatal("Filter 1 did not filter")
 			}
-			if rowCount2 == len(licenceCollection.rows) {
+			if rowCount2 == len(licenceCollection.Rows) {
 				t.Fatal("Filter 2 did not filter")
 			}
 
@@ -249,7 +249,7 @@ func TestWTR(t *testing.T) {
 				t.Fatal("Filter 3 did not copy headers")
 			}
 
-			if len(licenceCollectionCustomerBoth.rows) != (rowCount1 + rowCount2) {
+			if len(licenceCollectionCustomerBoth.Rows) != (rowCount1 + rowCount2) {
 				t.Fatal("Multiple filter messed up")
 			}
 		})
