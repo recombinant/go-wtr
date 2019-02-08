@@ -269,6 +269,8 @@ func LoadData(csvFileName string) *LicenceCollection {
 	if err != nil {
 		log.Fatalln("CSV open:", err)
 	}
+	defer csvFile.Close()
+
 	return ReadCsv(csvFile)
 }
 
