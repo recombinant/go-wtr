@@ -3,6 +3,7 @@ package wtr
 import (
 	"bufio"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -61,8 +62,8 @@ type LicenceRow struct {
 	ProductDescription32 string
 	Osgb36Eastings       int
 	Osgb36Northings      int
-	Wgs84Eastings        int
-	Wgs84Northings       int
+	Wgs84Eastings        float64
+	Wgs84Northings       float64
 	// The last four values are not present in the original OFCOM csv.
 	// They are can be added externally (ie. from outside this package).
 	// Saving to csv will save them if they are present.
@@ -168,11 +169,11 @@ func newLicenceRow(row map[string]string, userColumns bool) *LicenceRow {
 		if err != nil {
 			log.Fatal(err)
 		}
-		licenceRow.Wgs84Eastings, err = strconv.Atoi(row["WGS84 E"])
+		licenceRow.Wgs84Eastings, err = strconv.ParseFloat(row["WGS84 E"], 64)
 		if err != nil {
 			log.Fatal(err)
 		}
-		licenceRow.Wgs84Northings, err = strconv.Atoi(row["WGS84 N"])
+		licenceRow.Wgs84Northings, err = strconv.ParseFloat(row["WGS84 N"], 64)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -235,8 +236,8 @@ func (licenceRow *LicenceRow) toMap(userColumns bool) map[string]string {
 	if userColumns {
 		rowMap["OSGB36 E"] = strconv.Itoa(licenceRow.Osgb36Eastings)
 		rowMap["OSGB36 N"] = strconv.Itoa(licenceRow.Osgb36Northings)
-		rowMap["WGS84 E"] = strconv.Itoa(licenceRow.Wgs84Eastings)
-		rowMap["WGS84 N"] = strconv.Itoa(licenceRow.Wgs84Northings)
+		rowMap["WGS84 E"] = fmt.Sprintf("%f", licenceRow.Wgs84Eastings)
+		rowMap["WGS84 N"] = fmt.Sprintf("%f", licenceRow.Wgs84Northings)
 	}
 	return rowMap
 }
