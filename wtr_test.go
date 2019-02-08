@@ -163,25 +163,25 @@ func TestWTR(t *testing.T) {
 			}
 
 			// Apply the same filter again.
-			licenceCollection3 := licenceCollectionP2P.Filter(FilterPointToPoint)
+			licenceCollection2 := licenceCollectionP2P.Filter(FilterPointToPoint)
 
-			if !compareHeaders(licenceCollection3, licenceCollectionP2P) {
+			if !compareHeaders(licenceCollection2, licenceCollectionP2P) {
 				t.Fatal("2nd Filter did not copy headers")
 			}
 
 			// Should be identical lengths.
-			if !compareRowLengths(licenceCollection3, licenceCollectionP2P) {
+			if !compareRowLengths(licenceCollection2, licenceCollectionP2P) {
 				t.Fatal("2nd Filter filtered (it should not have done anything")
 			}
 
-			licenceCollection4 := licenceCollection.Filter(FilterProductCodes("301010"))
-			if !compareHeaders(licenceCollection4, licenceCollectionP2P) {
+			licenceCollection3 := licenceCollection.Filter(FilterProductCodes("301010"), FilterValidNGR)
+			if !compareHeaders(licenceCollection3, licenceCollectionP2P) {
 				t.Fatal("3rd Filter did not copy headers")
 			}
 
 			// Should be identical lengths.
-			if !compareRowLengths(licenceCollection4, licenceCollectionP2P) {
-				t.Fatal("3rd Filter filtered incorrectly (should have been identical to first")
+			if !compareRowLengths(licenceCollection3, licenceCollectionP2P) {
+				t.Fatal("3rd Filter filtered incorrectly (should have been identical to first)")
 			}
 		})
 
@@ -213,7 +213,7 @@ func TestWTR(t *testing.T) {
 			copy(licenceRows, licenceCollection.Rows)
 			licenceCollection2 := &LicenceCollection{licenceCollection.Header, licenceRows}
 
-			licenceCollection2.FilterInPlace(FilterProductCodes("301010"))
+			licenceCollection2.FilterInPlace(FilterProductCodes("301010"), FilterValidNGR)
 
 			if count != len(licenceCollection2.Rows) {
 				t.Fatal("FilterInPlace count did not match")

@@ -376,10 +376,17 @@ func (lc *LicenceCollection) FilterInPlace(filterFuncs ...FilterFn) *LicenceColl
 	return lc
 }
 
+var creNGR = regexp.MustCompile("[A-Z]{2} ?[0-9]{5} ?[0-9]{5}$")
+
 // FilterPointToPoint is a specialised version of FilterProductCodes that
 // omits the intermediate FilterFn function.
 func FilterPointToPoint(row *LicenceRow) bool {
-	return row.ProductCode == "301010"
+	return row.ProductCode == "301010" && creNGR.MatchString(row.NGR)
+}
+
+// FilterValidNGR ensures that there is a valid NGR
+func FilterValidNGR(row *LicenceRow) bool {
+	return creNGR.MatchString(row.NGR)
 }
 
 // FilterProductCodes returns a function with the FilterFn signature. This
