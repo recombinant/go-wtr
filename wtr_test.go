@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"regexp"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -97,8 +99,21 @@ func TestWTR(t *testing.T) {
 			if s1[:len(s2)] != s2 {
 				t.Fatal("Header wrong")
 			}
+
+			cre := regexp.MustCompile("([^\r\n])*[\r\n]")
+			header := cre.FindString(s1)
+			if len(strings.Split(header, ",")) != 46 {
+				t.Fatalf("Header wrong number of colums: %v", len(strings.Split(s1, ",")))
+			}
 		})
 
+	// ----------------------------------------------------------------- Header
+	t.Run("Header",
+		func(t *testing.T) {
+			if len(licenceCollection.Header) != 46 {
+				t.Fatalf("Header wrong number of colums: %v", len(licenceCollection.Header))
+			}
+		})
 	// --------------------------------------------- Product Code & Description
 	t.Run("Product Codes & Description",
 		func(t *testing.T) {
@@ -185,7 +200,7 @@ func TestWTR(t *testing.T) {
 
 			licenceRows := make([]*LicenceRow, len(licenceCollection.Rows))
 			copy(licenceRows, licenceCollection.Rows)
-			licenceCollection2 := &LicenceCollection{licenceCollection.Header, licenceRows, false}
+			licenceCollection2 := &LicenceCollection{licenceCollection.Header, licenceRows}
 
 			licenceCollection2.FilterInPlace(FilterProductCodes("301010"))
 

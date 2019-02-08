@@ -70,7 +70,7 @@ type LicenceRow struct {
 }
 
 // newLicenceRow tidies each record before returning the LicenceRow
-func newLicenceRow(row map[string]string, userColumns bool) *LicenceRow {
+func newLicenceRow(row map[string]string) *LicenceRow {
 	// --------------------------------------------- Product Code & Description
 	productCode := strings.TrimSpace(row["Product Code"])
 	productDescription := strings.TrimSpace(row["Product Description"])
@@ -110,6 +110,7 @@ func newLicenceRow(row map[string]string, userColumns bool) *LicenceRow {
 	ngr := strings.Join(strings.Fields(row["NGR"]), "")
 
 	// --------------------------------
+	// These columns are present in every row.
 	licenceRow := LicenceRow{
 		LicenceNumber:        row["Licence Number"],
 		LicenceIssueDate:     row["Licence issue date"],
@@ -159,20 +160,37 @@ func newLicenceRow(row map[string]string, userColumns bool) *LicenceRow {
 		ProductDescription32: row["Product Description 32"],
 	}
 
-	if userColumns {
-		var err error
+	// The following columns are not present in the original OFCOM csv but
+	// may be present a munged version.
+	var err error
+
+	col := "OSGB36 E"
+	if _, ok := row[col]; ok {
 		licenceRow.Osgb36Eastings, err = strconv.Atoi(row["OSGB36 E"])
 		if err != nil {
 			log.Fatal(err)
 		}
-		licenceRow.Osgb36Northings, err = strconv.Atoi(row["OSGB36 N"])
+	}
+
+	col = "OSGB36 N"
+	if _, ok := row[col]; ok {
+		licenceRow.Osgb36Northings, err = strconv.Atoi(row[col])
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	col = "WGS84 E"
+	if _, ok := row[col]; ok {
 		licenceRow.Wgs84Eastings, err = strconv.ParseFloat(row["WGS84 E"], 64)
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	col = "WGS84 N"
+	if _, ok := row[col]; ok {
+
 		licenceRow.Wgs84Northings, err = strconv.ParseFloat(row["WGS84 N"], 64)
 		if err != nil {
 			log.Fatal(err)
@@ -182,8 +200,10 @@ func newLicenceRow(row map[string]string, userColumns bool) *LicenceRow {
 	return &licenceRow
 }
 
-func (licenceRow *LicenceRow) toMap(userColumns bool) map[string]string {
-	rowMap := map[string]string{
+// toMap puts all of the LicenceRow member variables in a map. These
+// will only be included in the csv if the associated header column is present.
+func (licenceRow *LicenceRow) toMap() map[string]string {
+	return map[string]string{
 		"Licence Number":         licenceRow.LicenceNumber,
 		"Licence issue date":     licenceRow.LicenceIssueDate,
 		"SID_LAT_N_S":            licenceRow.SidLatNS,
@@ -230,24 +250,18 @@ func (licenceRow *LicenceRow) toMap(userColumns bool) map[string]string {
 		"Product Description":    licenceRow.ProductDescription,
 		"Product Description 31": licenceRow.ProductDescription31,
 		"Product Description 32": licenceRow.ProductDescription32,
+		"OSGB36 E":               strconv.Itoa(licenceRow.Osgb36Eastings),
+		"OSGB36 N":               strconv.Itoa(licenceRow.Osgb36Northings),
+		"WGS84 E":                fmt.Sprintf("%f", licenceRow.Wgs84Eastings),
+		"WGS84 N":                fmt.Sprintf("%f", licenceRow.Wgs84Northings),
 	}
-
-	// These values are added external to this package.
-	if userColumns {
-		rowMap["OSGB36 E"] = strconv.Itoa(licenceRow.Osgb36Eastings)
-		rowMap["OSGB36 N"] = strconv.Itoa(licenceRow.Osgb36Northings)
-		rowMap["WGS84 E"] = fmt.Sprintf("%f", licenceRow.Wgs84Eastings)
-		rowMap["WGS84 N"] = fmt.Sprintf("%f", licenceRow.Wgs84Northings)
-	}
-	return rowMap
 }
 
 type LicenceRows []*LicenceRow
 
 type LicenceCollection struct {
-	Header      []string
-	Rows        LicenceRows
-	UserColumns bool // Have extra user columns been added?
+	Header []string
+	Rows   LicenceRows
 }
 
 func LoadData(csvFileName string) *LicenceCollection {
@@ -258,21 +272,13 @@ func LoadData(csvFileName string) *LicenceCollection {
 	return ReadCsv(csvFile)
 }
 
-// hasUserColumns returns true if the extra user columns have been added to
-// the csv.
-func hasUserColumns(header []string) bool {
-	return header[len(header)-1] == "WGS84 N"
-}
-
 // ReadCsv to read in the OFCOM WTR csv.
 func ReadCsv(reader io.Reader) *LicenceCollection {
 	header, rawRows := CSVToMap(bufio.NewReader(reader))
 
-	userColumns := hasUserColumns(header)
-
-	lc := LicenceCollection{header, make(LicenceRows, len(rawRows)), userColumns}
+	lc := LicenceCollection{header, make(LicenceRows, len(rawRows))}
 	for i, row := range rawRows {
-		lc.Rows[i] = newLicenceRow(row, userColumns)
+		lc.Rows[i] = newLicenceRow(row)
 	}
 	return &lc
 }
@@ -284,10 +290,9 @@ func (lc *LicenceCollection) WriteCsv(writer io.Writer) {
 	if err := w.Write(lc.Header); err != nil {
 		log.Fatalf("LicenceCollection.WriteCsv header %v", err)
 	}
-	hasUserColumns := hasUserColumns(lc.Header)
 
 	for _, row := range lc.Rows {
-		rowAsMap := row.toMap(hasUserColumns)
+		rowAsMap := row.toMap()
 		var csvRow = make([]string, len(lc.Header))
 		for j, heading := range lc.Header {
 			// rowAsMap[heading] checked for existence during development.
@@ -325,8 +330,7 @@ type FilterFn func(licenceRow *LicenceRow) bool
 // for the LicenceRow to be added to the filtered LicenceCollection.
 func (lc *LicenceCollection) Filter(filterFuncs ...FilterFn) *LicenceCollection {
 	header := lc.Header
-	userColumns := hasUserColumns(header)
-	filtered := LicenceCollection{header, make(LicenceRows, 0), userColumns}
+	filtered := LicenceCollection{header, make(LicenceRows, 0)}
 
 Loop:
 	for _, row := range lc.Rows {
