@@ -334,15 +334,19 @@ func (lc *LicenceCollection) Filter(filterFuncs ...FilterFn) *LicenceCollection 
 	header := lc.Header
 	filtered := LicenceCollection{header, make(LicenceRows, 0)}
 
-Loop:
+	// All filters must return true for a row to be appended.
 	for _, row := range lc.Rows {
+		ok := true
 		for _, filterFunc := range filterFuncs {
 			if !filterFunc(row) {
-				break Loop
+				ok = false
+				break // not this row
 			}
 		}
-		// All filters returned true.
-		filtered.Rows = append(filtered.Rows, row)
+
+		if ok {
+			filtered.Rows = append(filtered.Rows, row)
+		}
 	}
 
 	return &filtered
@@ -353,15 +357,20 @@ Loop:
 func (lc *LicenceCollection) FilterInPlace(filterFuncs ...FilterFn) *LicenceCollection {
 	filteredRows := lc.Rows[:0]
 
-Loop:
+	// All filters must return true for a row to be appended.
 	for _, row := range lc.Rows {
+		ok := true
 		for _, filterFunc := range filterFuncs {
 			if !filterFunc(row) {
-				break Loop // not this one
+				ok = false
+				break // not this row
 			}
 		}
-		// All filters returned true.
-		filteredRows = append(filteredRows, row)
+
+		if ok {
+			// All filters returned true.
+			filteredRows = append(filteredRows, row)
+		}
 	}
 	lc.Rows = filteredRows
 	return lc

@@ -198,11 +198,26 @@ func TestWTR(t *testing.T) {
 				t.Fatal("Filter did not filter")
 			}
 
+			count := 0
+			for _, row := range licenceCollectionP2P.Rows {
+				if row.ProductCode == "301010" {
+					count++
+				}
+			}
+
+			if count != len(licenceCollectionP2P.Rows) {
+				t.Fatal("Filter P2P count did not match")
+			}
+
 			licenceRows := make([]*LicenceRow, len(licenceCollection.Rows))
 			copy(licenceRows, licenceCollection.Rows)
 			licenceCollection2 := &LicenceCollection{licenceCollection.Header, licenceRows}
 
 			licenceCollection2.FilterInPlace(FilterProductCodes("301010"))
+
+			if count != len(licenceCollection2.Rows) {
+				t.Fatal("FilterInPlace count did not match")
+			}
 
 			if compareRowLengths(licenceCollection, licenceCollection2) {
 				t.Fatalf("FilterInPlace did not work (1) %v %v %v",
@@ -211,7 +226,9 @@ func TestWTR(t *testing.T) {
 					len(licenceCollectionP2P.Rows))
 			}
 			if !compareRowLengths(licenceCollectionP2P, licenceCollection2) {
-				t.Fatal("FilterInPlace did not work (2)")
+				t.Fatalf("FilterInPlace did not work (2): %v, %v",
+					len(licenceCollectionP2P.Rows),
+					len(licenceCollection2.Rows))
 			}
 		})
 	// ------------------------------------------------------------------------
