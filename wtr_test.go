@@ -103,7 +103,7 @@ func TestWTR(t *testing.T) {
 			cre := regexp.MustCompile("([^\r\n])*[\r\n]")
 			header := cre.FindString(s1)
 			if len(strings.Split(header, ",")) != 46 {
-				t.Fatalf("Header wrong number of colums: %v", len(strings.Split(s1, ",")))
+				t.Fatalf("Header wrong number of columns: %v", len(strings.Split(s1, ",")))
 			}
 		})
 
@@ -111,7 +111,7 @@ func TestWTR(t *testing.T) {
 	t.Run("Header",
 		func(t *testing.T) {
 			if len(licenceCollection.Header) != 46 {
-				t.Fatalf("Header wrong number of colums: %v", len(licenceCollection.Header))
+				t.Fatalf("Header wrong number of columns: %v", len(licenceCollection.Header))
 			}
 		})
 	// --------------------------------------------- Product Code & Description

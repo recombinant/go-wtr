@@ -283,25 +283,25 @@ func ReadCsv(reader io.Reader) *LicenceCollection {
 	return &lc
 }
 
+// WriteCsv writes the csv header, then writes the rows.
 func (lc *LicenceCollection) WriteCsv(writer io.Writer) {
-	// write the header, then write the rows.
-
 	w := csv.NewWriter(writer)
 	if err := w.Write(lc.Header); err != nil {
-		log.Fatalf("LicenceCollection.WriteCsv header %v", err)
+		log.Fatalf("LicenceCollection.WriteCsv header: %v", err)
 	}
 
+	var csvRow = make([]string, len(lc.Header))
 	for _, row := range lc.Rows {
 		rowAsMap := row.toMap()
-		var csvRow = make([]string, len(lc.Header))
 		for j, heading := range lc.Header {
 			// rowAsMap[heading] checked for existence during development.
 			csvRow[j] = rowAsMap[heading]
 		}
 		if err := w.Write(csvRow); err != nil {
-			log.Fatalf("LicenceCollection.WriteCsv row %v", err)
+			log.Fatalf("LicenceCollection.WriteCsv row: %v", err)
 		}
 	}
+	w.Flush()
 }
 
 // GetCompanies returns a slice of strings of unique Company names from all
