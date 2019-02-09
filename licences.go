@@ -3,7 +3,6 @@ package wtr
 import (
 	"bufio"
 	"encoding/csv"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -14,60 +13,69 @@ import (
 )
 
 type LicenceRow struct {
-	LicenceNumber        string
-	LicenceIssueDate     string
-	SidLatNS             string
-	SidLatDeg            string
-	SidLatMin            string
-	SidLatSec            string
-	SidLongEW            string
-	SidLongDeg           string
-	SidLongMin           string
-	SidLongSec           string
-	NGR                  string
-	Frequency            string
-	FrequencyType        string
-	StationType          string
-	ChannelWidth         string
-	ChannelWidthType     string
-	HeightAboveSeaLevel  string
-	AntennaErp           string
-	AntennaErpType       string
-	AntennaType          string
-	AntennaGain          string
-	AntennaAzimuth       string
-	HorizontalElements   string
-	VerticalElements     string
-	AntennaHeight        string
-	AntennaLocation      string
-	EflUpperLower        string
-	AntennaDirection     string
-	AntennaElevation     string
-	AntennaPolarisation  string
-	AntennaName          string
-	FeedingLoss          string
-	FadeMargin           string
-	EmissionCode         string
-	ApCommentIntern      string
-	Vector               string
-	LicenseeSurname      string
-	LicenseeFirstName    string
-	LicenseeCompany      string
-	Status               string
-	Tradeable            string
-	Publishable          string
-	ProductCode          string
-	ProductDescription   string
-	ProductDescription31 string
-	ProductDescription32 string
-	Osgb36Eastings       int
-	Osgb36Northings      int
-	Wgs84Eastings        float64
-	Wgs84Northings       float64
-	// The last four values are not present in the original OFCOM csv.
+	LicenceNumber          string
+	LicenceIssueDate       string
+	SidLatNS               string
+	SidLatDeg              string
+	SidLatMin              string
+	SidLatSec              string
+	SidLongEW              string
+	SidLongDeg             string
+	SidLongMin             string
+	SidLongSec             string
+	NGR                    string
+	Frequency              string
+	FrequencyType          string
+	StationType            string
+	ChannelWidth           string
+	ChannelWidthType       string
+	HeightAboveSeaLevel    string
+	AntennaErp             string
+	AntennaErpType         string
+	AntennaType            string
+	AntennaGain            string
+	AntennaAzimuth         string
+	HorizontalElements     string
+	VerticalElements       string
+	AntennaHeight          string
+	AntennaLocation        string
+	EflUpperLower          string
+	AntennaDirection       string
+	AntennaElevation       string
+	AntennaPolarisation    string
+	AntennaName            string
+	FeedingLoss            string
+	FadeMargin             string
+	EmissionCode           string
+	ApCommentIntern        string
+	Vector                 string
+	LicenseeSurname        string
+	LicenseeFirstName      string
+	LicenseeCompany        string
+	Status                 string
+	Tradeable              string
+	Publishable            string
+	ProductCode            string
+	ProductDescription     string
+	ProductDescription31   string
+	ProductDescription32   string
+	Wgs84LongitudeAsString string // Persistent representation
+	Wgs84LatitudeAsString  string
+	Wgs84Longitude         float64 // Converted from persistent
+	Wgs84Latitude          float64
+	Osgb36Eastings         int
+	Osgb36Northings        int
+	// The last size values are not present in the original OFCOM csv.
 	// They are can be added externally (ie. from outside this package).
 	// Saving to csv will save them if they are present.
 }
+
+const (
+	HeadingOsgb36E   = "OSGB36 E"
+	HeadingOsgb36N   = "OSGB36 N"
+	HeadingWgs84Long = "WGS84 Longitude"
+	HeadingWgs84Lat  = "WGS84 Latitude"
+)
 
 // newLicenceRow tidies each record before returning the LicenceRow
 func newLicenceRow(row map[string]string) *LicenceRow {
@@ -164,34 +172,31 @@ func newLicenceRow(row map[string]string) *LicenceRow {
 	// may be present a munged version.
 	var err error
 
-	col := "OSGB36 E"
-	if _, ok := row[col]; ok {
-		licenceRow.Osgb36Eastings, err = strconv.Atoi(row["OSGB36 E"])
+	if _, ok := row[HeadingOsgb36E]; ok {
+		licenceRow.Osgb36Eastings, err = strconv.Atoi(row[HeadingOsgb36E])
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	col = "OSGB36 N"
-	if _, ok := row[col]; ok {
-		licenceRow.Osgb36Northings, err = strconv.Atoi(row[col])
+	if _, ok := row[HeadingOsgb36N]; ok {
+		licenceRow.Osgb36Northings, err = strconv.Atoi(row[HeadingOsgb36N])
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	col = "WGS84 E"
-	if _, ok := row[col]; ok {
-		licenceRow.Wgs84Eastings, err = strconv.ParseFloat(row["WGS84 E"], 64)
+	if _, ok := row[HeadingWgs84Long]; ok {
+		licenceRow.Wgs84LongitudeAsString = row[HeadingWgs84Long]
+		licenceRow.Wgs84Longitude, err = strconv.ParseFloat(licenceRow.Wgs84LongitudeAsString, 64)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	col = "WGS84 N"
-	if _, ok := row[col]; ok {
-
-		licenceRow.Wgs84Northings, err = strconv.ParseFloat(row["WGS84 N"], 64)
+	if _, ok := row[HeadingWgs84Lat]; ok {
+		licenceRow.Wgs84LatitudeAsString = row[HeadingWgs84Lat]
+		licenceRow.Wgs84Latitude, err = strconv.ParseFloat(licenceRow.Wgs84LatitudeAsString, 64)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -250,10 +255,10 @@ func (licenceRow *LicenceRow) toMap() map[string]string {
 		"Product Description":    licenceRow.ProductDescription,
 		"Product Description 31": licenceRow.ProductDescription31,
 		"Product Description 32": licenceRow.ProductDescription32,
-		"OSGB36 E":               strconv.Itoa(licenceRow.Osgb36Eastings),
-		"OSGB36 N":               strconv.Itoa(licenceRow.Osgb36Northings),
-		"WGS84 E":                fmt.Sprintf("%f", licenceRow.Wgs84Eastings),
-		"WGS84 N":                fmt.Sprintf("%f", licenceRow.Wgs84Northings),
+		HeadingOsgb36E:           strconv.Itoa(licenceRow.Osgb36Eastings),
+		HeadingOsgb36N:           strconv.Itoa(licenceRow.Osgb36Northings),
+		HeadingWgs84Long:         licenceRow.Wgs84LongitudeAsString,
+		HeadingWgs84Lat:          licenceRow.Wgs84LatitudeAsString,
 	}
 }
 
