@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"strings"
 )
 
 type LicenceRow struct {
@@ -79,46 +78,7 @@ const (
 
 // newLicenceRow tidies each record before returning the LicenceRow
 func newLicenceRow(row map[string]string) *LicenceRow {
-	// --------------------------------------------- Product Code & Description
-	productCode := strings.TrimSpace(row["Product Code"])
-	productDescription := strings.TrimSpace(row["Product Description"])
-	if len(productCode) > 6 && len(productDescription) == 0 {
-		// Product Description may be appended to Product Code.
-		// Split the Product Code appropriately.
-		cre := regexp.MustCompile(`([0-9]{6})[\- ]+(.*)$`)
-		mo := cre.FindStringSubmatch(productCode)
-		if len(mo) > 2 {
-			productCode = mo[1]
-			productDescription = mo[2]
-		}
-	}
-	// ----------------------------------------------- Tweak some company names
-	// Shorter names fit better in, say, KML balloons.
-	licenseeCompany := row["Licencee Company"]
-	if licenseeCompany == "BRITISH TELECOMMUNICATIONS PUBLIC LIMITED COMPANY" {
-		licenseeCompany = "BT PLC"
-	} else if licenseeCompany == "MOBILE BROADBAND NETWORK LIMITED" {
-		licenseeCompany = "MBNL"
-	} else {
-		pairs := []struct {
-			old, new string
-		}{
-			{"Public Limited Company", "PLC"},
-			{"PUBLIC LIMITED COMPANY", "PLC"},
-			{"Limited", "Ltd"},
-			{"LIMITED", "LTD"},
-		}
-		for _, pair := range pairs {
-			if strings.Contains(licenseeCompany, pair.old) {
-				licenseeCompany = strings.Replace(licenseeCompany, pair.old, pair.new, 1)
-			}
-		}
-	}
-	// ------------------------------------------------------ Normalize the NGR
-	ngr := strings.Join(strings.Fields(row["NGR"]), "")
-
-	// --------------------------------
-	// These columns are present in every row.
+	// The columns in this map are present in every row.
 	licenceRow := LicenceRow{
 		LicenceNumber:        row["Licence Number"],
 		LicenceIssueDate:     row["Licence issue date"],
@@ -130,7 +90,7 @@ func newLicenceRow(row map[string]string) *LicenceRow {
 		SidLongDeg:           row["SID_LONG_DEG"],
 		SidLongMin:           row["SID_LONG_MIN"],
 		SidLongSec:           row["SID_LONG_SEC"],
-		NGR:                  ngr,
+		NGR:                  row["NGR"],
 		Frequency:            row["Frequency"],
 		FrequencyType:        row["Frequency Type"],
 		StationType:          row["Station Type"],
@@ -158,12 +118,12 @@ func newLicenceRow(row map[string]string) *LicenceRow {
 		Vector:               row["Vector"],
 		LicenseeSurname:      row["Licencee Surname"],
 		LicenseeFirstName:    row["Licencee First Name"],
-		LicenseeCompany:      licenseeCompany,
+		LicenseeCompany:      row["Licencee Company"],
 		Status:               row["Status"],
 		Tradeable:            row["Tradeable"],
 		Publishable:          row["Publishable"],
-		ProductCode:          productCode,
-		ProductDescription:   productDescription,
+		ProductCode:          row["Product Code"],
+		ProductDescription:   row["Product Description"],
 		ProductDescription31: row["Product Description 31"],
 		ProductDescription32: row["Product Description 32"],
 	}
@@ -253,7 +213,7 @@ func (licenceRow *LicenceRow) toMap() map[string]string {
 		"Publishable":            licenceRow.Publishable,
 		"Product Code":           licenceRow.ProductCode,
 		"Product Description":    licenceRow.ProductDescription,
-		"Product Description 31": licenceRow.ProductDescription31,
+		"Product Description 31": licenceRow.ProductDescription31, // Product code number
 		"Product Description 32": licenceRow.ProductDescription32,
 		HeadingOsgb36E:           strconv.Itoa(licenceRow.Osgb36Eastings),
 		HeadingOsgb36N:           strconv.Itoa(licenceRow.Osgb36Northings),
@@ -383,10 +343,10 @@ func (lc *LicenceCollection) FilterInPlace(filterFuncs ...FilterFn) *LicenceColl
 
 var creNGR = regexp.MustCompile("[A-Z]{2} ?[0-9]{5} ?[0-9]{5}$")
 
-// FilterPointToPoint is a specialised version of FilterProductCodes that
+// FilterPointToPoint is a specialised version of FilterNumericalProductCodes that
 // omits the intermediate FilterFn function.
 func FilterPointToPoint(row *LicenceRow) bool {
-	return row.ProductCode == "301010" && creNGR.MatchString(row.NGR)
+	return row.ProductDescription31 == "301010" && creNGR.MatchString(row.NGR)
 }
 
 // FilterValidNGR ensures that there is a valid NGR
@@ -394,16 +354,17 @@ func FilterValidNGR(row *LicenceRow) bool {
 	return creNGR.MatchString(row.NGR)
 }
 
-// FilterProductCodes returns a function with the FilterFn signature. This
-// function returns true a LicenceRow ProductCode matches any product code in
-// productCodes.
-func FilterProductCodes(productCodes ...string) func(*LicenceRow) bool {
+// FilterNumericalProductCodes returns a function with the FilterFn signature.
+// The returned function returns true if a LicenceRow numerical product code
+// matches any numerical product code in numericalProductCodes.
+func FilterNumericalProductCodes(numericalProductCodes ...string) func(*LicenceRow) bool {
 	lookup := make(map[string]bool)
-	for _, code := range productCodes {
+	for _, code := range numericalProductCodes {
 		lookup[code] = true
 	}
 	return func(licenceRow *LicenceRow) bool {
-		_, found := lookup[licenceRow.ProductCode]
+		// Numerical product code is in Product Description 31
+		_, found := lookup[licenceRow.ProductDescription31]
 		return found
 	}
 }
@@ -447,7 +408,9 @@ func CSVToMap(reader io.Reader) ([]string, []map[string]string) {
 	return header, rows
 }
 
-func GetProductCodes() map[string]string {
+// GetProductCodeLookup returns a map of numerical product code vs
+// product description (not OFCOM's verbatim).
+func GetProductCodeLookup() map[string]string {
 	return map[string]string{
 		//"250011": "Broadband Fixed Wireless Access (28 GHz- Guernsey)",
 		"301010": "Fixed Links",
@@ -464,19 +427,19 @@ func GetProductCodes() map[string]string {
 		"308040": "Satellite (Non Fixed Satellite Earth Station)",
 		"308130": "Network 2GHz Licence",
 		"309010": "GNSS Repeater",
-		"351010": "CSR International (Coastal Station Radio)",
-		"351020": "CSR UK",
-		"351030": "CSR Marina",
+		"351010": "Coastal Station Radio International",
+		"351020": "Coastal Station Radio UK",
+		"351030": "Coastal Station Radio Marina",
 		"351090": "Maritime Suppliers",
 		"352010": "Maritime Navaids and Radar",
 		"352020": "Differential Global Positioning System",
-		"352030": "AIS (Automatic Identification System)",
+		"352030": "Automatic Identification System",
 		"354010": "Coastal Station Radio (UK) Area Defined",
 		"354020": "Coastal Station Radio (Int) Area Defined",
 		"408010": "Business Radio Technically Assigned",
 		"409020": "Business Radio (Public Safety Radio)",
 		"409030": "Business Radio (GSM-R Railway Use)",
-		"409510": "BR Area Assigned",
+		"409510": "Business Radio Area Defined", // Assigned
 		"470807": "Aeronautical Station (Aeronautical Broadcast)",
 		"470808": "Aeronautical Station (Aerodrome Surface and Operational",
 		"502040": "Public Wireless Networks (2G Cellular Operator)",
@@ -513,6 +476,6 @@ func GetProductCodes() map[string]string {
 		"551020": "Grant of RSA for Receive Only Earth Station (ROES)",
 		"603020": "Miscellaneous",
 		"604010": "High Duty Cycle Network Relay Points",
-		"605010": "Manually Configurable White Space Devices:",
+		"605010": "Manually Configurable White Space Devices",
 	}
 }

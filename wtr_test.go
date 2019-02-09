@@ -95,7 +95,7 @@ func TestWTR(t *testing.T) {
 
 			// Check the header row
 			s1 := b.String()
-			s2 := "Licence Number,Licence issue date,SID_LAT_N_S,SID_LAT_DEG,SID_LAT_MIN,SID_LAT_SEC,SID_LONG_E_W,SID_LONG_DEG,SID_LONG_MIN,SID_LONG_SEC,NGR,Frequency,Frequency Type,Station Type,Channel Width,Channel Width type,Height above sea level,Antenna ERP,Antenna ERP type,Antenna Type,Antenna Gain,Antenna AZIMUTH,Horizontal Elements,Vertical Elements,Antenna Height,Antenna Location,EFL_UPPER_LOWER,Antenna Direction,Antenna Elevation,Antenna Polarisation,Antenna Name,Feeding Loss,Fade Margin,Emission Code,AP_COMMENT_INTERN,Vector,Licencee Surname,Licencee First Name,Licencee Company,Status,Tradeable,Publishable,Product Code,Product Description,Product Description 31,Product Description 32"
+			const s2 = "Licence Number,Licence issue date,SID_LAT_N_S,SID_LAT_DEG,SID_LAT_MIN,SID_LAT_SEC,SID_LONG_E_W,SID_LONG_DEG,SID_LONG_MIN,SID_LONG_SEC,NGR,Frequency,Frequency Type,Station Type,Channel Width,Channel Width type,Height above sea level,Antenna ERP,Antenna ERP type,Antenna Type,Antenna Gain,Antenna AZIMUTH,Horizontal Elements,Vertical Elements,Antenna Height,Antenna Location,EFL_UPPER_LOWER,Antenna Direction,Antenna Elevation,Antenna Polarisation,Antenna Name,Feeding Loss,Fade Margin,Emission Code,AP_COMMENT_INTERN,Vector,Licencee Surname,Licencee First Name,Licencee Company,Status,Tradeable,Publishable,Product Code,Product Description,Product Description 31,Product Description 32"
 			if s1[:len(s2)] != s2 {
 				t.Fatal("Header wrong")
 			}
@@ -117,12 +117,12 @@ func TestWTR(t *testing.T) {
 	// --------------------------------------------- Product Code & Description
 	t.Run("Product Codes & Description",
 		func(t *testing.T) {
-			knownCodes := GetProductCodes()
+			knownCodes := GetProductCodeLookup()
 			foundCodes := make(map[string]bool)
 
 			// Check the Product Code is known
 			for _, row := range licenceCollection.Rows {
-				productCode := row.ProductCode
+				productCode := row.ProductDescription31
 				if _, ok := knownCodes[productCode]; !ok {
 					t.Fatalf("unknown Product Code: \"%v\"", productCode)
 				}
@@ -135,14 +135,18 @@ func TestWTR(t *testing.T) {
 				}
 			}
 
-			// Check that Product Codes are the correct length
+			// Check that numerical product codes are the correct length
 			// Check that there is a Product Description
 			for _, row := range licenceCollection.Rows {
-				if len(row.ProductCode) != 6 {
-					t.Fatalf("incorrect Product Code length: \"%v\"", row.ProductCode)
+				// Numerical product code is in Product Description 31
+				if len(row.ProductDescription31) != 6 {
+					t.Fatalf("incorrect Product Code length: \"%v\"", row.ProductDescription31)
 				}
-				if len(row.ProductDescription) == 0 {
+				if len(row.ProductDescription) == 0 && len(row.ProductDescription32) == 0 {
 					t.Fatal("missing Product Description")
+				}
+				if len(row.ProductDescription) > 0 && len(row.ProductDescription32) > 0 {
+					t.Fatal("unexpected Product Description")
 				}
 			}
 		})
@@ -174,7 +178,7 @@ func TestWTR(t *testing.T) {
 				t.Fatal("2nd Filter filtered (it should not have done anything")
 			}
 
-			licenceCollection3 := licenceCollection.Filter(FilterProductCodes("301010"), FilterValidNGR)
+			licenceCollection3 := licenceCollection.Filter(FilterNumericalProductCodes("301010"), FilterValidNGR)
 			if !compareHeaders(licenceCollection3, licenceCollectionP2P) {
 				t.Fatal("3rd Filter did not copy headers")
 			}
@@ -184,7 +188,7 @@ func TestWTR(t *testing.T) {
 				t.Fatal("3rd Filter filtered incorrectly (should have been identical to first)")
 			}
 		})
-
+	// ------------------------------------------------------------------------
 	t.Run("filterInPlace Product Code",
 		func(t *testing.T) {
 			licenceCollectionP2P = licenceCollection.Filter(FilterPointToPoint)
@@ -200,7 +204,8 @@ func TestWTR(t *testing.T) {
 
 			count := 0
 			for _, row := range licenceCollectionP2P.Rows {
-				if row.ProductCode == "301010" {
+				// The numerical product code is in Product Description 31
+				if row.ProductDescription31 == "301010" {
 					count++
 				}
 			}
@@ -213,7 +218,7 @@ func TestWTR(t *testing.T) {
 			copy(licenceRows, licenceCollection.Rows)
 			licenceCollection2 := &LicenceCollection{licenceCollection.Header, licenceRows}
 
-			licenceCollection2.FilterInPlace(FilterProductCodes("301010"), FilterValidNGR)
+			licenceCollection2.FilterInPlace(FilterNumericalProductCodes("301010"), FilterValidNGR)
 
 			if count != len(licenceCollection2.Rows) {
 				t.Fatal("FilterInPlace count did not match")
@@ -236,7 +241,7 @@ func TestWTR(t *testing.T) {
 		func(t *testing.T) {
 			companies := licenceCollection.GetCompanies()
 
-			company1, company2 := "MBNL", "Vodafone Ltd"
+			const company1, company2 = "MOBILE BROADBAND NETWORK LIMITED", "Vodafone Limited"
 			found1, found2 := false, false
 			// Ensure that the companies actually exist.
 			for i := range companies {
@@ -285,5 +290,4 @@ func TestWTR(t *testing.T) {
 				t.Fatal("Multiple filter messed up")
 			}
 		})
-	// ------------------------------------------------------------------------
 }
