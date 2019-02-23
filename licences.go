@@ -36,7 +36,7 @@ type LicenceRow struct {
 	AntennaAzimuth         string
 	HorizontalElements     string
 	VerticalElements       string
-	AntennaHeight          string
+	AntennaHeight          float64 // Resolution to 0.5m
 	AntennaLocation        string
 	EflUpperLower          string
 	AntennaDirection       string
@@ -62,18 +62,18 @@ type LicenceRow struct {
 	Wgs84LatitudeAsString  string
 	Wgs84Longitude         float64 // Converted from persistent
 	Wgs84Latitude          float64
-	Osgb36Eastings         int
-	Osgb36Northings        int
-	// The last size values are not present in the original OFCOM csv.
+	OsEastings             int
+	OsNorthings            int
+	// The last two values are not present in the original OFCOM csv.
 	// They are can be added externally (ie. from outside this package).
 	// Saving to csv will save them if they are present.
 }
 
 const (
-	HeadingOsgb36E   = "OSGB36 E"
-	HeadingOsgb36N   = "OSGB36 N"
-	HeadingWgs84Long = "WGS84 Longitude"
-	HeadingWgs84Lat  = "WGS84 Latitude"
+	HeadingOsEastings     = "OS Eastings"
+	HeadingOsNorthings    = "OS Northings"
+	HeadingWgs84Longitude = "WGS84 Longitude"
+	HeadingWgs84Latitude  = "WGS84 Latitude"
 )
 
 // newLicenceRow tidies each record before returning the LicenceRow
@@ -104,7 +104,7 @@ func newLicenceRow(row map[string]string) *LicenceRow {
 		AntennaAzimuth:       row["Antenna AZIMUTH"],
 		HorizontalElements:   row["Horizontal Elements"],
 		VerticalElements:     row["Vertical Elements"],
-		AntennaHeight:        row["Antenna Height"],
+		AntennaHeight:        antennaHeightFromString(row["Antenna Height"]),
 		AntennaLocation:      row["Antenna Location"],
 		EflUpperLower:        row["EFL_UPPER_LOWER"],
 		AntennaDirection:     row["Antenna Direction"],
@@ -132,30 +132,30 @@ func newLicenceRow(row map[string]string) *LicenceRow {
 	// may be present a munged version.
 	var err error
 
-	if _, ok := row[HeadingOsgb36E]; ok {
-		licenceRow.Osgb36Eastings, err = strconv.Atoi(row[HeadingOsgb36E])
+	if _, ok := row[HeadingOsEastings]; ok {
+		licenceRow.OsEastings, err = strconv.Atoi(row[HeadingOsEastings])
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	if _, ok := row[HeadingOsgb36N]; ok {
-		licenceRow.Osgb36Northings, err = strconv.Atoi(row[HeadingOsgb36N])
+	if _, ok := row[HeadingOsNorthings]; ok {
+		licenceRow.OsNorthings, err = strconv.Atoi(row[HeadingOsNorthings])
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	if _, ok := row[HeadingWgs84Long]; ok {
-		licenceRow.Wgs84LongitudeAsString = row[HeadingWgs84Long]
+	if _, ok := row[HeadingWgs84Longitude]; ok {
+		licenceRow.Wgs84LongitudeAsString = row[HeadingWgs84Longitude]
 		licenceRow.Wgs84Longitude, err = strconv.ParseFloat(licenceRow.Wgs84LongitudeAsString, 64)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	if _, ok := row[HeadingWgs84Lat]; ok {
-		licenceRow.Wgs84LatitudeAsString = row[HeadingWgs84Lat]
+	if _, ok := row[HeadingWgs84Latitude]; ok {
+		licenceRow.Wgs84LatitudeAsString = row[HeadingWgs84Latitude]
 		licenceRow.Wgs84Latitude, err = strconv.ParseFloat(licenceRow.Wgs84LatitudeAsString, 64)
 		if err != nil {
 			log.Fatal(err)
@@ -193,7 +193,7 @@ func (licenceRow *LicenceRow) toMap() map[string]string {
 		"Antenna AZIMUTH":        licenceRow.AntennaAzimuth,
 		"Horizontal Elements":    licenceRow.HorizontalElements,
 		"Vertical Elements":      licenceRow.VerticalElements,
-		"Antenna Height":         licenceRow.AntennaHeight,
+		"Antenna Height":         licenceRow.AntennaHeightAsString(),
 		"Antenna Location":       licenceRow.AntennaLocation,
 		"EFL_UPPER_LOWER":        licenceRow.EflUpperLower,
 		"Antenna Direction":      licenceRow.AntennaDirection,
@@ -215,18 +215,16 @@ func (licenceRow *LicenceRow) toMap() map[string]string {
 		"Product Description":    licenceRow.ProductDescription,
 		"Product Description 31": licenceRow.ProductDescription31, // Product code number
 		"Product Description 32": licenceRow.ProductDescription32,
-		HeadingOsgb36E:           strconv.Itoa(licenceRow.Osgb36Eastings),
-		HeadingOsgb36N:           strconv.Itoa(licenceRow.Osgb36Northings),
-		HeadingWgs84Long:         licenceRow.Wgs84LongitudeAsString,
-		HeadingWgs84Lat:          licenceRow.Wgs84LatitudeAsString,
+		HeadingOsEastings:        strconv.Itoa(licenceRow.OsEastings),
+		HeadingOsNorthings:       strconv.Itoa(licenceRow.OsNorthings),
+		HeadingWgs84Longitude:    licenceRow.Wgs84LongitudeAsString,
+		HeadingWgs84Latitude:     licenceRow.Wgs84LatitudeAsString,
 	}
 }
 
-type LicenceRows []*LicenceRow
-
 type LicenceCollection struct {
 	Header []string
-	Rows   LicenceRows
+	Rows   []*LicenceRow
 }
 
 func LoadData(csvFileName string) *LicenceCollection {
@@ -243,7 +241,7 @@ func LoadData(csvFileName string) *LicenceCollection {
 func ReadCsv(reader io.Reader) *LicenceCollection {
 	header, rawRows := CSVToMap(bufio.NewReader(reader))
 
-	lc := LicenceCollection{header, make(LicenceRows, len(rawRows))}
+	lc := LicenceCollection{header, make([]*LicenceRow, len(rawRows))}
 	for i, row := range rawRows {
 		lc.Rows[i] = newLicenceRow(row)
 	}
@@ -297,7 +295,7 @@ type FilterFn func(licenceRow *LicenceRow) bool
 // for the LicenceRow to be added to the filtered LicenceCollection.
 func (lc *LicenceCollection) Filter(filterFuncs ...FilterFn) *LicenceCollection {
 	header := lc.Header
-	filtered := LicenceCollection{header, make(LicenceRows, 0)}
+	filtered := LicenceCollection{header, make([]*LicenceRow, 0)}
 
 	// All filters must return true for a row to be appended.
 	for _, row := range lc.Rows {
@@ -478,4 +476,17 @@ func GetProductCodeLookup() map[string]string {
 		"604010": "High Duty Cycle Network Relay Points",
 		"605010": "Manually Configurable White Space Devices",
 	}
+}
+
+func antennaHeightFromString(value string) (height float64) {
+	var err error
+	height, err = strconv.ParseFloat(value, 64)
+	if err != nil {
+		height = 0.0
+	}
+	return
+}
+
+func (licenceRow *LicenceRow) AntennaHeightAsString() string {
+	return strconv.FormatFloat(licenceRow.AntennaHeight, 'f', -1, 64)
 }
