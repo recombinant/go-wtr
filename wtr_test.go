@@ -15,18 +15,18 @@ import (
 
 const fileURL string = "http://static.ofcom.org.uk/static/radiolicensing/html/register/WTR.csv"
 
-func compareHeaders(collection1 *LicenceCollection, collection2 *LicenceCollection) bool {
+func compareHeaders(collection1 *Collection, collection2 *Collection) bool {
 	if collection1 == collection2 {
 		return false // Should not compare collection to itself.
 	}
-	return len(collection1.Header) == len(collection2.Header)
+	return len(collection1.CsvHeader) == len(collection2.CsvHeader)
 }
 
-func compareRowLengths(collection1 *LicenceCollection, collection2 *LicenceCollection) bool {
+func compareRowLengths(collection1 *Collection, collection2 *Collection) bool {
 	if collection1 == collection2 {
 		return false // Should not compare collection to itself.
 	}
-	return len(collection1.Rows) == len(collection2.Rows)
+	return len(collection1.CsvRows) == len(collection2.CsvRows)
 }
 
 // TestWTR does all the testing as the initial load of the data is expensive.
@@ -77,8 +77,8 @@ func TestWTR(t *testing.T) {
 		})
 
 	// --------------------------------------------------------- load the data
-	licenceCollection := LoadData(dataPath)
-	if len(licenceCollection.Rows) == 0 {
+	collection := LoadData(dataPath)
+	if len(collection.CsvRows) == 0 {
 		t.Fatal("Failed to read licence file")
 	}
 
@@ -88,7 +88,7 @@ func TestWTR(t *testing.T) {
 			b := new(bytes.Buffer)
 			writer := bufio.NewWriter(b)
 
-			licenceCollection.WriteCsv(writer)
+			collection.WriteCsv(writer)
 			if writer.Size() == 0 {
 				t.Fatal("Failed to write licence file")
 			}
@@ -110,8 +110,8 @@ func TestWTR(t *testing.T) {
 	// ----------------------------------------------------------------- Header
 	t.Run("Header",
 		func(t *testing.T) {
-			if len(licenceCollection.Header) != 46 {
-				t.Fatalf("Header wrong number of columns: %v", len(licenceCollection.Header))
+			if len(collection.CsvHeader) != 46 {
+				t.Fatalf("Header wrong number of columns: %v", len(collection.CsvHeader))
 			}
 		})
 	// --------------------------------------------- Product Code & Description
@@ -121,7 +121,7 @@ func TestWTR(t *testing.T) {
 			foundCodes := make(map[string]bool)
 
 			// Check the Product Code is known
-			for _, row := range licenceCollection.Rows {
+			for _, row := range collection.CsvRows {
 				productCode := row.ProductDescription31
 				if _, ok := knownCodes[productCode]; !ok {
 					t.Fatalf("unknown Product Code: \"%v\"", productCode)
@@ -137,7 +137,7 @@ func TestWTR(t *testing.T) {
 
 			// Check that numerical product codes are the correct length
 			// Check that there is a Product Description
-			for _, row := range licenceCollection.Rows {
+			for _, row := range collection.CsvRows {
 				// Numerical product code is in Product Description 31
 				if len(row.ProductDescription31) != 6 {
 					t.Fatalf("incorrect Product Code length: \"%v\"", row.ProductDescription31)
@@ -151,95 +151,95 @@ func TestWTR(t *testing.T) {
 			}
 		})
 	// ----------------------------------------------------- partition the data
-	var licenceCollectionP2P *LicenceCollection
+	var collectionP2P *Collection
 
 	t.Run("filter Product Code",
 		func(t *testing.T) {
-			licenceCollectionP2P = licenceCollection.Filter(FilterPointToPoint)
+			collectionP2P = collection.Filter(FilterPointToPoint)
 
-			if !compareHeaders(licenceCollectionP2P, licenceCollection) {
+			if !compareHeaders(collectionP2P, collection) {
 				t.Fatal("Filter did not copy headers")
 			}
 
 			// Rows should be different lengths.
-			if compareRowLengths(licenceCollectionP2P, licenceCollection) {
+			if compareRowLengths(collectionP2P, collection) {
 				t.Fatal("Filter did not filter")
 			}
 
 			// Apply the same filter again.
-			licenceCollection2 := licenceCollectionP2P.Filter(FilterPointToPoint)
+			collection2 := collectionP2P.Filter(FilterPointToPoint)
 
-			if !compareHeaders(licenceCollection2, licenceCollectionP2P) {
+			if !compareHeaders(collection2, collectionP2P) {
 				t.Fatal("2nd Filter did not copy headers")
 			}
 
 			// Should be identical lengths.
-			if !compareRowLengths(licenceCollection2, licenceCollectionP2P) {
+			if !compareRowLengths(collection2, collectionP2P) {
 				t.Fatal("2nd Filter filtered (it should not have done anything")
 			}
 
-			licenceCollection3 := licenceCollection.Filter(FilterNumericalProductCodes("301010"), FilterValidNGR)
-			if !compareHeaders(licenceCollection3, licenceCollectionP2P) {
+			collection3 := collection.Filter(FilterNumericalProductCodes("301010"), FilterValidNGR)
+			if !compareHeaders(collection3, collectionP2P) {
 				t.Fatal("3rd Filter did not copy headers")
 			}
 
 			// Should be identical lengths.
-			if !compareRowLengths(licenceCollection3, licenceCollectionP2P) {
+			if !compareRowLengths(collection3, collectionP2P) {
 				t.Fatal("3rd Filter filtered incorrectly (should have been identical to first)")
 			}
 		})
 	// ------------------------------------------------------------------------
 	t.Run("filterInPlace Product Code",
 		func(t *testing.T) {
-			licenceCollectionP2P = licenceCollection.Filter(FilterPointToPoint)
+			collectionP2P = collection.Filter(FilterPointToPoint)
 
-			if !compareHeaders(licenceCollectionP2P, licenceCollection) {
+			if !compareHeaders(collectionP2P, collection) {
 				t.Fatal("Filter did not copy headers")
 			}
 
 			// They should be different lengths.
-			if compareRowLengths(licenceCollectionP2P, licenceCollection) {
+			if compareRowLengths(collectionP2P, collection) {
 				t.Fatal("Filter did not filter")
 			}
 
 			count := 0
-			for _, row := range licenceCollectionP2P.Rows {
+			for _, row := range collectionP2P.CsvRows {
 				// The numerical product code is in Product Description 31
 				if row.ProductDescription31 == "301010" {
 					count++
 				}
 			}
 
-			if count != len(licenceCollectionP2P.Rows) {
+			if count != len(collectionP2P.CsvRows) {
 				t.Fatal("Filter P2P count did not match")
 			}
 
-			licenceRows := make([]*LicenceRow, len(licenceCollection.Rows))
-			copy(licenceRows, licenceCollection.Rows)
-			licenceCollection2 := &LicenceCollection{licenceCollection.Header, licenceRows}
+			rows := make([]*Row, len(collection.CsvRows))
+			copy(rows, collection.CsvRows)
+			collection2 := &Collection{collection.CsvHeader, rows}
 
-			licenceCollection2.FilterInPlace(FilterNumericalProductCodes("301010"), FilterValidNGR)
+			collection2.FilterInPlace(FilterNumericalProductCodes("301010"), FilterValidNGR)
 
-			if count != len(licenceCollection2.Rows) {
+			if count != len(collection2.CsvRows) {
 				t.Fatal("FilterInPlace count did not match")
 			}
 
-			if compareRowLengths(licenceCollection, licenceCollection2) {
+			if compareRowLengths(collection, collection2) {
 				t.Fatalf("FilterInPlace did not work (1) %v %v %v",
-					len(licenceCollection.Rows),
-					len(licenceCollection2.Rows),
-					len(licenceCollectionP2P.Rows))
+					len(collection.CsvRows),
+					len(collection2.CsvRows),
+					len(collectionP2P.CsvRows))
 			}
-			if !compareRowLengths(licenceCollectionP2P, licenceCollection2) {
+			if !compareRowLengths(collectionP2P, collection2) {
 				t.Fatalf("FilterInPlace did not work (2): %v, %v",
-					len(licenceCollectionP2P.Rows),
-					len(licenceCollection2.Rows))
+					len(collectionP2P.CsvRows),
+					len(collection2.CsvRows))
 			}
 		})
 	// ------------------------------------------------------------------------
 	t.Run("filter Licensee Companies",
 		func(t *testing.T) {
-			companies := licenceCollection.GetCompanies()
+			companies := collection.GetCompanies()
 
 			const company1, company2 = "MOBILE BROADBAND NETWORK LIMITED", "Vodafone Limited"
 			found1, found2 := false, false
@@ -261,32 +261,32 @@ func TestWTR(t *testing.T) {
 				t.Fatalf("Could not find company \"%v\"", company2)
 			}
 
-			licenceCollectionCustomer1 := licenceCollection.Filter(FilterCompanies(company1))
-			licenceCollectionCustomer2 := licenceCollection.Filter(FilterCompanies(company2))
+			collectionCustomer1 := collection.Filter(FilterCompanies(company1))
+			collectionCustomer2 := collection.Filter(FilterCompanies(company2))
 
-			if !compareHeaders(licenceCollectionCustomer1, licenceCollection) {
+			if !compareHeaders(collectionCustomer1, collection) {
 				t.Fatal("Filter 1 did not copy headers")
 			}
-			if !compareHeaders(licenceCollectionCustomer2, licenceCollection) {
+			if !compareHeaders(collectionCustomer2, collection) {
 				t.Fatal("Filter 2 did not copy headers")
 			}
 
-			rowCount1 := len(licenceCollectionCustomer1.Rows)
-			rowCount2 := len(licenceCollectionCustomer2.Rows)
-			if rowCount1 == len(licenceCollection.Rows) {
+			rowCount1 := len(collectionCustomer1.CsvRows)
+			rowCount2 := len(collectionCustomer2.CsvRows)
+			if rowCount1 == len(collection.CsvRows) {
 				t.Fatal("Filter 1 did not filter")
 			}
-			if rowCount2 == len(licenceCollection.Rows) {
+			if rowCount2 == len(collection.CsvRows) {
 				t.Fatal("Filter 2 did not filter")
 			}
 
-			licenceCollectionCustomerBoth := licenceCollection.Filter(FilterCompanies(company1, company2))
+			collectionCustomerBoth := collection.Filter(FilterCompanies(company1, company2))
 
-			if !compareHeaders(licenceCollectionCustomerBoth, licenceCollection) {
+			if !compareHeaders(collectionCustomerBoth, collection) {
 				t.Fatal("Filter 3 did not copy headers")
 			}
 
-			if len(licenceCollectionCustomerBoth.Rows) != (rowCount1 + rowCount2) {
+			if len(collectionCustomerBoth.CsvRows) != (rowCount1 + rowCount2) {
 				t.Fatal("Multiple filter messed up")
 			}
 		})

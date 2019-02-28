@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-type LicenceRow struct {
+type Row struct {
 	LicenceNumber          string
 	LicenceIssueDate       string
 	SidLatNS               string
@@ -36,7 +36,7 @@ type LicenceRow struct {
 	AntennaAzimuth         string
 	HorizontalElements     string
 	VerticalElements       string
-	AntennaHeight          float64 // Resolution to 0.5m
+	AntennaHeight          string // Resolution to 0.5m
 	AntennaLocation        string
 	EflUpperLower          string
 	AntennaDirection       string
@@ -76,158 +76,158 @@ const (
 	HeadingWgs84Latitude  = "WGS84 Latitude"
 )
 
-// newLicenceRow tidies each record before returning the LicenceRow
-func newLicenceRow(row map[string]string) *LicenceRow {
-	// The columns in this map are present in every row.
-	licenceRow := LicenceRow{
-		LicenceNumber:        row["Licence Number"],
-		LicenceIssueDate:     row["Licence issue date"],
-		SidLatNS:             row["SID_LAT_N_S"],
-		SidLatDeg:            row["SID_LAT_DEG"],
-		SidLatMin:            row["SID_LAT_MIN"],
-		SidLatSec:            row["SID_LAT_SEC"],
-		SidLongEW:            row["SID_LONG_E_W"],
-		SidLongDeg:           row["SID_LONG_DEG"],
-		SidLongMin:           row["SID_LONG_MIN"],
-		SidLongSec:           row["SID_LONG_SEC"],
-		NGR:                  row["NGR"],
-		Frequency:            row["Frequency"],
-		FrequencyType:        row["Frequency Type"],
-		StationType:          row["Station Type"],
-		ChannelWidth:         row["Channel Width"],
-		ChannelWidthType:     row["Channel Width type"],
-		HeightAboveSeaLevel:  row["Height above sea level"],
-		AntennaErp:           row["Antenna ERP"],
-		AntennaErpType:       row["Antenna ERP type"],
-		AntennaType:          row["Antenna Type"],
-		AntennaGain:          row["Antenna Gain"],
-		AntennaAzimuth:       row["Antenna AZIMUTH"],
-		HorizontalElements:   row["Horizontal Elements"],
-		VerticalElements:     row["Vertical Elements"],
-		AntennaHeight:        antennaHeightFromString(row["Antenna Height"]),
-		AntennaLocation:      row["Antenna Location"],
-		EflUpperLower:        row["EFL_UPPER_LOWER"],
-		AntennaDirection:     row["Antenna Direction"],
-		AntennaElevation:     row["Antenna Elevation"],
-		AntennaPolarisation:  row["Antenna Polarisation"],
-		AntennaName:          row["Antenna Name"],
-		FeedingLoss:          row["Feeding Loss"],
-		FadeMargin:           row["Fade Margin"],
-		EmissionCode:         row["Emission Code"],
-		ApCommentIntern:      row["AP_COMMENT_INTERN"],
-		Vector:               row["Vector"],
-		LicenseeSurname:      row["Licencee Surname"],
-		LicenseeFirstName:    row["Licencee First Name"],
-		LicenseeCompany:      row["Licencee Company"],
-		Status:               row["Status"],
-		Tradeable:            row["Tradeable"],
-		Publishable:          row["Publishable"],
-		ProductCode:          row["Product Code"],
-		ProductDescription:   row["Product Description"],
-		ProductDescription31: row["Product Description 31"],
-		ProductDescription32: row["Product Description 32"],
+// newRow tidies each record before returning the Row
+func newRow(columns map[string]string) *Row {
+	// The columns in this map are present in every columns.
+	row := Row{
+		LicenceNumber:        columns["Licence Number"],
+		LicenceIssueDate:     columns["Licence issue date"],
+		SidLatNS:             columns["SID_LAT_N_S"],
+		SidLatDeg:            columns["SID_LAT_DEG"],
+		SidLatMin:            columns["SID_LAT_MIN"],
+		SidLatSec:            columns["SID_LAT_SEC"],
+		SidLongEW:            columns["SID_LONG_E_W"],
+		SidLongDeg:           columns["SID_LONG_DEG"],
+		SidLongMin:           columns["SID_LONG_MIN"],
+		SidLongSec:           columns["SID_LONG_SEC"],
+		NGR:                  columns["NGR"],
+		Frequency:            columns["Frequency"],
+		FrequencyType:        columns["Frequency Type"],
+		StationType:          columns["Station Type"],
+		ChannelWidth:         columns["Channel Width"],
+		ChannelWidthType:     columns["Channel Width type"],
+		HeightAboveSeaLevel:  columns["Height above sea level"],
+		AntennaErp:           columns["Antenna ERP"],
+		AntennaErpType:       columns["Antenna ERP type"],
+		AntennaType:          columns["Antenna Type"],
+		AntennaGain:          columns["Antenna Gain"],
+		AntennaAzimuth:       columns["Antenna AZIMUTH"],
+		HorizontalElements:   columns["Horizontal Elements"],
+		VerticalElements:     columns["Vertical Elements"],
+		AntennaHeight:        columns["Antenna Height"],
+		AntennaLocation:      columns["Antenna Location"],
+		EflUpperLower:        columns["EFL_UPPER_LOWER"],
+		AntennaDirection:     columns["Antenna Direction"],
+		AntennaElevation:     columns["Antenna Elevation"],
+		AntennaPolarisation:  columns["Antenna Polarisation"],
+		AntennaName:          columns["Antenna Name"],
+		FeedingLoss:          columns["Feeding Loss"],
+		FadeMargin:           columns["Fade Margin"],
+		EmissionCode:         columns["Emission Code"],
+		ApCommentIntern:      columns["AP_COMMENT_INTERN"],
+		Vector:               columns["Vector"],
+		LicenseeSurname:      columns["Licencee Surname"],
+		LicenseeFirstName:    columns["Licencee First Name"],
+		LicenseeCompany:      columns["Licencee Company"],
+		Status:               columns["Status"],
+		Tradeable:            columns["Tradeable"],
+		Publishable:          columns["Publishable"],
+		ProductCode:          columns["Product Code"],
+		ProductDescription:   columns["Product Description"],
+		ProductDescription31: columns["Product Description 31"],
+		ProductDescription32: columns["Product Description 32"],
 	}
 
 	// The following columns are not present in the original OFCOM csv but
 	// may be present a munged version.
 	var err error
 
-	if _, ok := row[HeadingOsEastings]; ok {
-		licenceRow.OsEastings, err = strconv.Atoi(row[HeadingOsEastings])
+	if _, ok := columns[HeadingOsEastings]; ok {
+		row.OsEastings, err = strconv.Atoi(columns[HeadingOsEastings])
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	if _, ok := row[HeadingOsNorthings]; ok {
-		licenceRow.OsNorthings, err = strconv.Atoi(row[HeadingOsNorthings])
+	if _, ok := columns[HeadingOsNorthings]; ok {
+		row.OsNorthings, err = strconv.Atoi(columns[HeadingOsNorthings])
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	if _, ok := row[HeadingWgs84Longitude]; ok {
-		licenceRow.Wgs84LongitudeAsString = row[HeadingWgs84Longitude]
-		licenceRow.Wgs84Longitude, err = strconv.ParseFloat(licenceRow.Wgs84LongitudeAsString, 64)
+	if _, ok := columns[HeadingWgs84Longitude]; ok {
+		row.Wgs84LongitudeAsString = columns[HeadingWgs84Longitude]
+		row.Wgs84Longitude, err = strconv.ParseFloat(row.Wgs84LongitudeAsString, 64)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	if _, ok := row[HeadingWgs84Latitude]; ok {
-		licenceRow.Wgs84LatitudeAsString = row[HeadingWgs84Latitude]
-		licenceRow.Wgs84Latitude, err = strconv.ParseFloat(licenceRow.Wgs84LatitudeAsString, 64)
+	if _, ok := columns[HeadingWgs84Latitude]; ok {
+		row.Wgs84LatitudeAsString = columns[HeadingWgs84Latitude]
+		row.Wgs84Latitude, err = strconv.ParseFloat(row.Wgs84LatitudeAsString, 64)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	return &licenceRow
+	return &row
 }
 
-// toMap puts all of the LicenceRow member variables in a map. These
+// toMap puts all of the Row member variables in a map (ie. columns). These
 // will only be included in the csv if the associated header column is present.
-func (licenceRow *LicenceRow) toMap() map[string]string {
+func (row *Row) toMap() map[string]string {
 	return map[string]string{
-		"Licence Number":         licenceRow.LicenceNumber,
-		"Licence issue date":     licenceRow.LicenceIssueDate,
-		"SID_LAT_N_S":            licenceRow.SidLatNS,
-		"SID_LAT_DEG":            licenceRow.SidLatDeg,
-		"SID_LAT_MIN":            licenceRow.SidLatMin,
-		"SID_LAT_SEC":            licenceRow.SidLatSec,
-		"SID_LONG_E_W":           licenceRow.SidLongEW,
-		"SID_LONG_DEG":           licenceRow.SidLongDeg,
-		"SID_LONG_MIN":           licenceRow.SidLongMin,
-		"SID_LONG_SEC":           licenceRow.SidLongSec,
-		"NGR":                    licenceRow.NGR,
-		"Frequency":              licenceRow.Frequency,
-		"Frequency Type":         licenceRow.FrequencyType,
-		"Station Type":           licenceRow.StationType,
-		"Channel Width":          licenceRow.ChannelWidth,
-		"Channel Width type":     licenceRow.ChannelWidthType,
-		"Height above sea level": licenceRow.HeightAboveSeaLevel,
-		"Antenna ERP":            licenceRow.AntennaErp,
-		"Antenna ERP type":       licenceRow.AntennaErpType,
-		"Antenna Type":           licenceRow.AntennaType,
-		"Antenna Gain":           licenceRow.AntennaGain,
-		"Antenna AZIMUTH":        licenceRow.AntennaAzimuth,
-		"Horizontal Elements":    licenceRow.HorizontalElements,
-		"Vertical Elements":      licenceRow.VerticalElements,
-		"Antenna Height":         licenceRow.AntennaHeightAsString(),
-		"Antenna Location":       licenceRow.AntennaLocation,
-		"EFL_UPPER_LOWER":        licenceRow.EflUpperLower,
-		"Antenna Direction":      licenceRow.AntennaDirection,
-		"Antenna Elevation":      licenceRow.AntennaElevation,
-		"Antenna Polarisation":   licenceRow.AntennaPolarisation,
-		"Antenna Name":           licenceRow.AntennaName,
-		"Feeding Loss":           licenceRow.FeedingLoss,
-		"Fade Margin":            licenceRow.FadeMargin,
-		"Emission Code":          licenceRow.EmissionCode,
-		"AP_COMMENT_INTERN":      licenceRow.ApCommentIntern,
-		"Vector":                 licenceRow.Vector,
-		"Licencee Surname":       licenceRow.LicenseeSurname,
-		"Licencee First Name":    licenceRow.LicenseeFirstName,
-		"Licencee Company":       licenceRow.LicenseeCompany,
-		"Status":                 licenceRow.Status,
-		"Tradeable":              licenceRow.Tradeable,
-		"Publishable":            licenceRow.Publishable,
-		"Product Code":           licenceRow.ProductCode,
-		"Product Description":    licenceRow.ProductDescription,
-		"Product Description 31": licenceRow.ProductDescription31, // Product code number
-		"Product Description 32": licenceRow.ProductDescription32,
-		HeadingOsEastings:        strconv.Itoa(licenceRow.OsEastings),
-		HeadingOsNorthings:       strconv.Itoa(licenceRow.OsNorthings),
-		HeadingWgs84Longitude:    licenceRow.Wgs84LongitudeAsString,
-		HeadingWgs84Latitude:     licenceRow.Wgs84LatitudeAsString,
+		"Licence Number":         row.LicenceNumber,
+		"Licence issue date":     row.LicenceIssueDate,
+		"SID_LAT_N_S":            row.SidLatNS,
+		"SID_LAT_DEG":            row.SidLatDeg,
+		"SID_LAT_MIN":            row.SidLatMin,
+		"SID_LAT_SEC":            row.SidLatSec,
+		"SID_LONG_E_W":           row.SidLongEW,
+		"SID_LONG_DEG":           row.SidLongDeg,
+		"SID_LONG_MIN":           row.SidLongMin,
+		"SID_LONG_SEC":           row.SidLongSec,
+		"NGR":                    row.NGR,
+		"Frequency":              row.Frequency,
+		"Frequency Type":         row.FrequencyType,
+		"Station Type":           row.StationType,
+		"Channel Width":          row.ChannelWidth,
+		"Channel Width type":     row.ChannelWidthType,
+		"Height above sea level": row.HeightAboveSeaLevel,
+		"Antenna ERP":            row.AntennaErp,
+		"Antenna ERP type":       row.AntennaErpType,
+		"Antenna Type":           row.AntennaType,
+		"Antenna Gain":           row.AntennaGain,
+		"Antenna AZIMUTH":        row.AntennaAzimuth,
+		"Horizontal Elements":    row.HorizontalElements,
+		"Vertical Elements":      row.VerticalElements,
+		"Antenna Height":         row.AntennaHeight,
+		"Antenna Location":       row.AntennaLocation,
+		"EFL_UPPER_LOWER":        row.EflUpperLower,
+		"Antenna Direction":      row.AntennaDirection,
+		"Antenna Elevation":      row.AntennaElevation,
+		"Antenna Polarisation":   row.AntennaPolarisation,
+		"Antenna Name":           row.AntennaName,
+		"Feeding Loss":           row.FeedingLoss,
+		"Fade Margin":            row.FadeMargin,
+		"Emission Code":          row.EmissionCode,
+		"AP_COMMENT_INTERN":      row.ApCommentIntern,
+		"Vector":                 row.Vector,
+		"Licencee Surname":       row.LicenseeSurname,
+		"Licencee First Name":    row.LicenseeFirstName,
+		"Licencee Company":       row.LicenseeCompany,
+		"Status":                 row.Status,
+		"Tradeable":              row.Tradeable,
+		"Publishable":            row.Publishable,
+		"Product Code":           row.ProductCode,
+		"Product Description":    row.ProductDescription,
+		"Product Description 31": row.ProductDescription31, // Product code number
+		"Product Description 32": row.ProductDescription32,
+		HeadingOsEastings:        strconv.Itoa(row.OsEastings),
+		HeadingOsNorthings:       strconv.Itoa(row.OsNorthings),
+		HeadingWgs84Longitude:    row.Wgs84LongitudeAsString,
+		HeadingWgs84Latitude:     row.Wgs84LatitudeAsString,
 	}
 }
 
-type LicenceCollection struct {
-	Header []string
-	Rows   []*LicenceRow
+type Collection struct {
+	CsvHeader []string
+	CsvRows   []*Row
 }
 
-func LoadData(csvFileName string) *LicenceCollection {
+func LoadData(csvFileName string) *Collection {
 	csvFile, err := os.Open(csvFileName)
 	if err != nil {
 		log.Fatalln("CSV open:", err)
@@ -238,27 +238,27 @@ func LoadData(csvFileName string) *LicenceCollection {
 }
 
 // ReadCsv to read in the OFCOM WTR csv.
-func ReadCsv(reader io.Reader) *LicenceCollection {
-	header, rawRows := CSVToMap(bufio.NewReader(reader))
+func ReadCsv(reader io.Reader) *Collection {
+	header, rawColumns := CSVToMap(bufio.NewReader(reader))
 
-	lc := LicenceCollection{header, make([]*LicenceRow, len(rawRows))}
-	for i, row := range rawRows {
-		lc.Rows[i] = newLicenceRow(row)
+	collection := Collection{header, make([]*Row, len(rawColumns))}
+	for i, columns := range rawColumns {
+		collection.CsvRows[i] = newRow(columns)
 	}
-	return &lc
+	return &collection
 }
 
 // WriteCsv writes the csv header, then writes the rows.
-func (lc *LicenceCollection) WriteCsv(writer io.Writer) {
+func (collection *Collection) WriteCsv(writer io.Writer) {
 	w := csv.NewWriter(writer)
-	if err := w.Write(lc.Header); err != nil {
+	if err := w.Write(collection.CsvHeader); err != nil {
 		log.Fatalf("LicenceCollection.WriteCsv header: %v", err)
 	}
 
-	var csvRow = make([]string, len(lc.Header))
-	for _, row := range lc.Rows {
+	var csvRow = make([]string, len(collection.CsvHeader))
+	for _, row := range collection.CsvRows {
 		rowAsMap := row.toMap()
-		for j, heading := range lc.Header {
+		for j, heading := range collection.CsvHeader {
 			// rowAsMap[heading] checked for existence during development.
 			csvRow[j] = rowAsMap[heading]
 		}
@@ -271,10 +271,10 @@ func (lc *LicenceCollection) WriteCsv(writer io.Writer) {
 
 // GetCompanies returns a slice of strings of unique Company names from all
 // the licence rows in the licence collection.
-func (lc *LicenceCollection) GetCompanies() []string {
+func (collection *Collection) GetCompanies() []string {
 	set := make(map[string]bool)
-	for _, licenceRow := range lc.Rows {
-		set[licenceRow.LicenseeCompany] = true
+	for _, row := range collection.CsvRows {
+		set[row.LicenseeCompany] = true
 	}
 
 	companies := make([]string, len(set))
@@ -288,17 +288,17 @@ func (lc *LicenceCollection) GetCompanies() []string {
 	return companies
 }
 
-type FilterFn func(licenceRow *LicenceRow) bool
+type FilterFn func(row *Row) bool
 
 // Filter returns a filtered LicenceCollection. Every filterFunc is called on
-// each LicenceRow in LicenceCollection. Every filterFunc has to return true
-// for the LicenceRow to be added to the filtered LicenceCollection.
-func (lc *LicenceCollection) Filter(filterFuncs ...FilterFn) *LicenceCollection {
-	header := lc.Header
-	filtered := LicenceCollection{header, make([]*LicenceRow, 0)}
+// each Row in LicenceCollection. Every filterFunc has to return true
+// for the Row to be added to the filtered LicenceCollection.
+func (collection *Collection) Filter(filterFuncs ...FilterFn) *Collection {
+	header := collection.CsvHeader
+	filtered := Collection{header, make([]*Row, 0)}
 
 	// All filters must return true for a row to be appended.
-	for _, row := range lc.Rows {
+	for _, row := range collection.CsvRows {
 		ok := true
 		for _, filterFunc := range filterFuncs {
 			if !filterFunc(row) {
@@ -308,7 +308,7 @@ func (lc *LicenceCollection) Filter(filterFuncs ...FilterFn) *LicenceCollection 
 		}
 
 		if ok {
-			filtered.Rows = append(filtered.Rows, row)
+			filtered.CsvRows = append(filtered.CsvRows, row)
 		}
 	}
 
@@ -317,11 +317,11 @@ func (lc *LicenceCollection) Filter(filterFuncs ...FilterFn) *LicenceCollection 
 
 // FilterInPlace is as Filter but overwrites the original backing array with the
 // filtered.
-func (lc *LicenceCollection) FilterInPlace(filterFuncs ...FilterFn) *LicenceCollection {
-	filteredRows := lc.Rows[:0]
+func (collection *Collection) FilterInPlace(filterFuncs ...FilterFn) *Collection {
+	filteredRows := collection.CsvRows[:0]
 
 	// All filters must return true for a row to be appended.
-	for _, row := range lc.Rows {
+	for _, row := range collection.CsvRows {
 		ok := true
 		for _, filterFunc := range filterFuncs {
 			if !filterFunc(row) {
@@ -335,45 +335,45 @@ func (lc *LicenceCollection) FilterInPlace(filterFuncs ...FilterFn) *LicenceColl
 			filteredRows = append(filteredRows, row)
 		}
 	}
-	lc.Rows = filteredRows
-	return lc
+	collection.CsvRows = filteredRows
+	return collection
 }
 
 var creNGR = regexp.MustCompile("[A-Z]{2} ?[0-9]{5} ?[0-9]{5}$")
 
 // FilterPointToPoint is a specialised version of FilterNumericalProductCodes that
 // omits the intermediate FilterFn function.
-func FilterPointToPoint(row *LicenceRow) bool {
+func FilterPointToPoint(row *Row) bool {
 	return row.ProductDescription31 == "301010" && creNGR.MatchString(row.NGR)
 }
 
 // FilterValidNGR ensures that there is a valid NGR
-func FilterValidNGR(row *LicenceRow) bool {
+func FilterValidNGR(row *Row) bool {
 	return creNGR.MatchString(row.NGR)
 }
 
 // FilterNumericalProductCodes returns a function with the FilterFn signature.
-// The returned function returns true if a LicenceRow numerical product code
+// The returned function returns true if a Row numerical product code
 // matches any numerical product code in numericalProductCodes.
-func FilterNumericalProductCodes(numericalProductCodes ...string) func(*LicenceRow) bool {
+func FilterNumericalProductCodes(numericalProductCodes ...string) func(*Row) bool {
 	lookup := make(map[string]bool)
 	for _, code := range numericalProductCodes {
 		lookup[code] = true
 	}
-	return func(licenceRow *LicenceRow) bool {
+	return func(row *Row) bool {
 		// Numerical product code is in Product Description 31
-		_, found := lookup[licenceRow.ProductDescription31]
+		_, found := lookup[row.ProductDescription31]
 		return found
 	}
 }
 
-func FilterCompanies(companies ...string) func(*LicenceRow) bool {
+func FilterCompanies(companies ...string) func(*Row) bool {
 	lookup := make(map[string]bool)
 	for _, company := range companies {
 		lookup[company] = true
 	}
-	return func(licenceRow *LicenceRow) bool {
-		_, found := lookup[licenceRow.LicenseeCompany]
+	return func(row *Row) bool {
+		_, found := lookup[row.LicenseeCompany]
 		return found
 	}
 }
@@ -478,15 +478,18 @@ func GetProductCodeLookup() map[string]string {
 	}
 }
 
-func antennaHeightFromString(value string) (height float64) {
-	var err error
-	height, err = strconv.ParseFloat(value, 64)
+func (row *Row) AntennaHeightAsFloat() float64 {
+	height, err := strconv.ParseFloat(row.AntennaHeight, 64)
 	if err != nil {
-		height = 0.0
+		return 0.0
 	}
-	return
+	return height
 }
 
-func (licenceRow *LicenceRow) AntennaHeightAsString() string {
-	return strconv.FormatFloat(licenceRow.AntennaHeight, 'f', -1, 64)
+func (row *Row) FrequencyAsFloat() float64 {
+	frequency, err := strconv.ParseFloat(row.Frequency, 64)
+	if err != nil {
+		return 0.0
+	}
+	return frequency
 }
