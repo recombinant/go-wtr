@@ -1,8 +1,9 @@
-package wtr
+package wtrcsv
 
 import (
 	"bufio"
 	"encoding/csv"
+	"github.com/pkg/errors"
 	"io"
 	"log"
 	"os"
@@ -135,14 +136,14 @@ func newRow(columns map[string]string) *Row {
 	if _, ok := columns[HeadingOsEastings]; ok {
 		row.OsEastings, err = strconv.Atoi(columns[HeadingOsEastings])
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("%v", errors.Wrap(err, "could not convert eastings"))
 		}
 	}
 
 	if _, ok := columns[HeadingOsNorthings]; ok {
 		row.OsNorthings, err = strconv.Atoi(columns[HeadingOsNorthings])
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("%v", errors.Wrap(err, "could not convert northings"))
 		}
 	}
 
@@ -150,7 +151,7 @@ func newRow(columns map[string]string) *Row {
 		row.Wgs84LongitudeAsString = columns[HeadingWgs84Longitude]
 		row.Wgs84Longitude, err = strconv.ParseFloat(row.Wgs84LongitudeAsString, 64)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("%v", errors.Wrap(err, "could not convert WGS84 longitude"))
 		}
 	}
 
@@ -158,7 +159,7 @@ func newRow(columns map[string]string) *Row {
 		row.Wgs84LatitudeAsString = columns[HeadingWgs84Latitude]
 		row.Wgs84Latitude, err = strconv.ParseFloat(row.Wgs84LatitudeAsString, 64)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("%v", errors.Wrap(err, "could not convert WGS84 latitude"))
 		}
 	}
 
@@ -223,14 +224,14 @@ func (row *Row) toMap() map[string]string {
 }
 
 type Collection struct {
-	CsvHeader []string
-	CsvRows   []*Row
+	Header []string
+	Rows   []*Row
 }
 
 func LoadData(csvFileName string) *Collection {
 	csvFile, err := os.Open(csvFileName)
 	if err != nil {
-		log.Fatalln("CSV open:", err)
+		log.Fatalln(errors.Wrapf(err, "could not open csv file: \"%s\"", csvFileName))
 	}
 	defer csvFile.Close()
 
@@ -243,7 +244,7 @@ func ReadCsv(reader io.Reader) *Collection {
 
 	collection := Collection{header, make([]*Row, len(rawColumns))}
 	for i, columns := range rawColumns {
-		collection.CsvRows[i] = newRow(columns)
+		collection.Rows[i] = newRow(columns)
 	}
 	return &collection
 }
@@ -251,19 +252,19 @@ func ReadCsv(reader io.Reader) *Collection {
 // WriteCsv writes the csv header, then writes the rows.
 func (collection *Collection) WriteCsv(writer io.Writer) {
 	w := csv.NewWriter(writer)
-	if err := w.Write(collection.CsvHeader); err != nil {
-		log.Fatalf("LicenceCollection.WriteCsv header: %v", err)
+	if err := w.Write(collection.Header); err != nil {
+		log.Fatalf("%v", errors.Wrap(err, "could not write CSV header"))
 	}
 
-	var csvRow = make([]string, len(collection.CsvHeader))
-	for _, row := range collection.CsvRows {
+	var csvRow = make([]string, len(collection.Header))
+	for _, row := range collection.Rows {
 		rowAsMap := row.toMap()
-		for j, heading := range collection.CsvHeader {
+		for j, heading := range collection.Header {
 			// rowAsMap[heading] checked for existence during development.
 			csvRow[j] = rowAsMap[heading]
 		}
 		if err := w.Write(csvRow); err != nil {
-			log.Fatalf("LicenceCollection.WriteCsv row: %v", err)
+			log.Fatalf("%v", errors.Wrap(err, "could not write CSV row"))
 		}
 	}
 	w.Flush()
@@ -273,7 +274,7 @@ func (collection *Collection) WriteCsv(writer io.Writer) {
 // the licence rows in the licence collection.
 func (collection *Collection) GetCompanies() []string {
 	set := make(map[string]bool)
-	for _, row := range collection.CsvRows {
+	for _, row := range collection.Rows {
 		set[row.LicenseeCompany] = true
 	}
 
@@ -290,15 +291,15 @@ func (collection *Collection) GetCompanies() []string {
 
 type FilterFn func(row *Row) bool
 
-// Filter returns a filtered LicenceCollection. Every filterFunc is called on
-// each Row in LicenceCollection. Every filterFunc has to return true
-// for the Row to be added to the filtered LicenceCollection.
+// Filter returns a filtered Collection. Every filterFunc is called on
+// each Row in Collection. Every filterFunc has to return true
+// for the Row to be added to the filtered Collection.
 func (collection *Collection) Filter(filterFuncs ...FilterFn) *Collection {
-	header := collection.CsvHeader
+	header := collection.Header
 	filtered := Collection{header, make([]*Row, 0)}
 
 	// All filters must return true for a row to be appended.
-	for _, row := range collection.CsvRows {
+	for _, row := range collection.Rows {
 		ok := true
 		for _, filterFunc := range filterFuncs {
 			if !filterFunc(row) {
@@ -308,7 +309,7 @@ func (collection *Collection) Filter(filterFuncs ...FilterFn) *Collection {
 		}
 
 		if ok {
-			filtered.CsvRows = append(filtered.CsvRows, row)
+			filtered.Rows = append(filtered.Rows, row)
 		}
 	}
 
@@ -318,10 +319,10 @@ func (collection *Collection) Filter(filterFuncs ...FilterFn) *Collection {
 // FilterInPlace is as Filter but overwrites the original backing array with the
 // filtered.
 func (collection *Collection) FilterInPlace(filterFuncs ...FilterFn) *Collection {
-	filteredRows := collection.CsvRows[:0]
+	filteredRows := collection.Rows[:0]
 
 	// All filters must return true for a row to be appended.
-	for _, row := range collection.CsvRows {
+	for _, row := range collection.Rows {
 		ok := true
 		for _, filterFunc := range filterFuncs {
 			if !filterFunc(row) {
@@ -335,7 +336,7 @@ func (collection *Collection) FilterInPlace(filterFuncs ...FilterFn) *Collection
 			filteredRows = append(filteredRows, row)
 		}
 	}
-	collection.CsvRows = filteredRows
+	collection.Rows = filteredRows
 	return collection
 }
 
@@ -391,7 +392,7 @@ func CSVToMap(reader io.Reader) ([]string, []map[string]string) {
 			break
 		}
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("%v", errors.Wrap(err, "could not read from reader"))
 		}
 		if header == nil {
 			header = record

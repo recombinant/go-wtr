@@ -1,8 +1,9 @@
-package wtr
+package wtrcsv
 
 import (
 	"bufio"
 	"bytes"
+	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"os"
@@ -19,14 +20,14 @@ func compareHeaders(collection1 *Collection, collection2 *Collection) bool {
 	if collection1 == collection2 {
 		return false // Should not compare collection to itself.
 	}
-	return len(collection1.CsvHeader) == len(collection2.CsvHeader)
+	return len(collection1.Header) == len(collection2.Header)
 }
 
 func compareRowLengths(collection1 *Collection, collection2 *Collection) bool {
 	if collection1 == collection2 {
 		return false // Should not compare collection to itself.
 	}
-	return len(collection1.CsvRows) == len(collection2.CsvRows)
+	return len(collection1.Rows) == len(collection2.Rows)
 }
 
 // TestWTR does all the testing as the initial load of the data is expensive.
@@ -40,7 +41,7 @@ func TestWTR(t *testing.T) {
 	if _, err := os.Stat(dataRoot); os.IsNotExist(err) {
 		err = os.Mkdir(dataRoot, 0755)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("%v", errors.Wrap(err, "failed to create temporary test directory"))
 		}
 	}
 	dataPath := path.Join(dataRoot, "WTR.csv")
@@ -56,7 +57,7 @@ func TestWTR(t *testing.T) {
 
 			resp, err := http.Get(fileURL)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("%v", errors.Wrapf(err, "could not GET URL: \"%s\"", fileURL))
 			}
 			defer resp.Body.Close()
 
@@ -66,19 +67,19 @@ func TestWTR(t *testing.T) {
 
 			out, err := os.Create(dataPath)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("%v", errors.Wrapf(err, "could not create file \"%s\"", dataPath))
 			}
 			defer out.Close()
 
 			_, err = io.Copy(out, resp.Body)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("%v", errors.Wrap(err, "failed to copy body"))
 			}
 		})
 
 	// --------------------------------------------------------- load the data
 	collection := LoadData(dataPath)
-	if len(collection.CsvRows) == 0 {
+	if len(collection.Rows) == 0 {
 		t.Fatal("Failed to read licence file")
 	}
 
@@ -110,8 +111,8 @@ func TestWTR(t *testing.T) {
 	// ----------------------------------------------------------------- Header
 	t.Run("Header",
 		func(t *testing.T) {
-			if len(collection.CsvHeader) != 46 {
-				t.Fatalf("Header wrong number of columns: %v", len(collection.CsvHeader))
+			if len(collection.Header) != 46 {
+				t.Fatalf("Header wrong number of columns: %v", len(collection.Header))
 			}
 		})
 	// --------------------------------------------- Product Code & Description
@@ -121,7 +122,7 @@ func TestWTR(t *testing.T) {
 			foundCodes := make(map[string]bool)
 
 			// Check the Product Code is known
-			for _, row := range collection.CsvRows {
+			for _, row := range collection.Rows {
 				productCode := row.ProductDescription31
 				if _, ok := knownCodes[productCode]; !ok {
 					t.Fatalf("unknown Product Code: \"%v\"", productCode)
@@ -137,7 +138,7 @@ func TestWTR(t *testing.T) {
 
 			// Check that numerical product codes are the correct length
 			// Check that there is a Product Description
-			for _, row := range collection.CsvRows {
+			for _, row := range collection.Rows {
 				// Numerical product code is in Product Description 31
 				if len(row.ProductDescription31) != 6 {
 					t.Fatalf("incorrect Product Code length: \"%v\"", row.ProductDescription31)
@@ -203,37 +204,37 @@ func TestWTR(t *testing.T) {
 			}
 
 			count := 0
-			for _, row := range collectionP2P.CsvRows {
+			for _, row := range collectionP2P.Rows {
 				// The numerical product code is in Product Description 31
 				if row.ProductDescription31 == "301010" {
 					count++
 				}
 			}
 
-			if count != len(collectionP2P.CsvRows) {
+			if count != len(collectionP2P.Rows) {
 				t.Fatal("Filter P2P count did not match")
 			}
 
-			rows := make([]*Row, len(collection.CsvRows))
-			copy(rows, collection.CsvRows)
-			collection2 := &Collection{collection.CsvHeader, rows}
+			rows := make([]*Row, len(collection.Rows))
+			copy(rows, collection.Rows)
+			collection2 := &Collection{collection.Header, rows}
 
 			collection2.FilterInPlace(FilterNumericalProductCodes("301010"), FilterValidNGR)
 
-			if count != len(collection2.CsvRows) {
+			if count != len(collection2.Rows) {
 				t.Fatal("FilterInPlace count did not match")
 			}
 
 			if compareRowLengths(collection, collection2) {
 				t.Fatalf("FilterInPlace did not work (1) %v %v %v",
-					len(collection.CsvRows),
-					len(collection2.CsvRows),
-					len(collectionP2P.CsvRows))
+					len(collection.Rows),
+					len(collection2.Rows),
+					len(collectionP2P.Rows))
 			}
 			if !compareRowLengths(collectionP2P, collection2) {
 				t.Fatalf("FilterInPlace did not work (2): %v, %v",
-					len(collectionP2P.CsvRows),
-					len(collection2.CsvRows))
+					len(collectionP2P.Rows),
+					len(collection2.Rows))
 			}
 		})
 	// ------------------------------------------------------------------------
@@ -271,12 +272,12 @@ func TestWTR(t *testing.T) {
 				t.Fatal("Filter 2 did not copy headers")
 			}
 
-			rowCount1 := len(collectionCustomer1.CsvRows)
-			rowCount2 := len(collectionCustomer2.CsvRows)
-			if rowCount1 == len(collection.CsvRows) {
+			rowCount1 := len(collectionCustomer1.Rows)
+			rowCount2 := len(collectionCustomer2.Rows)
+			if rowCount1 == len(collection.Rows) {
 				t.Fatal("Filter 1 did not filter")
 			}
-			if rowCount2 == len(collection.CsvRows) {
+			if rowCount2 == len(collection.Rows) {
 				t.Fatal("Filter 2 did not filter")
 			}
 
@@ -286,7 +287,7 @@ func TestWTR(t *testing.T) {
 				t.Fatal("Filter 3 did not copy headers")
 			}
 
-			if len(collectionCustomerBoth.CsvRows) != (rowCount1 + rowCount2) {
+			if len(collectionCustomerBoth.Rows) != (rowCount1 + rowCount2) {
 				t.Fatal("Multiple filter messed up")
 			}
 		})
