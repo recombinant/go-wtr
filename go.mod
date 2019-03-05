@@ -1,4 +1,4 @@
-module github.com/recombinant/go-wtr
+module github.com/recombinant/go-wtrcsv
 
 go 1.12
 
