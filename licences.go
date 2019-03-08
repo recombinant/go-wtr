@@ -63,16 +63,16 @@ type Row struct {
 	Wgs84LatitudeAsString  string
 	Wgs84Longitude         float64 // Converted from persistent
 	Wgs84Latitude          float64
-	OsEastings             int
-	OsNorthings            int
+	OsEasting              int
+	OsNorthing             int
 	// The last two values are not present in the original OFCOM csv.
 	// They are can be added externally (ie. from outside this package).
 	// Saving to csv will save them if they are present.
 }
 
 const (
-	HeadingOsEastings     = "OS Eastings"
-	HeadingOsNorthings    = "OS Northings"
+	HeadingOsEasting      = "OS Easting"
+	HeadingOsNorthing     = "OS Northing"
 	HeadingWgs84Longitude = "WGS84 Longitude"
 	HeadingWgs84Latitude  = "WGS84 Latitude"
 )
@@ -133,17 +133,17 @@ func newRow(columns map[string]string) *Row {
 	// may be present a munged version.
 	var err error
 
-	if _, ok := columns[HeadingOsEastings]; ok {
-		row.OsEastings, err = strconv.Atoi(columns[HeadingOsEastings])
+	if _, ok := columns[HeadingOsEasting]; ok {
+		row.OsEasting, err = strconv.Atoi(columns[HeadingOsEasting])
 		if err != nil {
-			log.Fatalf("%v", errors.Wrap(err, "could not convert eastings"))
+			log.Fatalf("%v", errors.Wrap(err, "could not convert easting"))
 		}
 	}
 
-	if _, ok := columns[HeadingOsNorthings]; ok {
-		row.OsNorthings, err = strconv.Atoi(columns[HeadingOsNorthings])
+	if _, ok := columns[HeadingOsNorthing]; ok {
+		row.OsNorthing, err = strconv.Atoi(columns[HeadingOsNorthing])
 		if err != nil {
-			log.Fatalf("%v", errors.Wrap(err, "could not convert northings"))
+			log.Fatalf("%v", errors.Wrap(err, "could not convert northing"))
 		}
 	}
 
@@ -216,8 +216,8 @@ func (row *Row) toMap() map[string]string {
 		"Product Description":    row.ProductDescription,
 		"Product Description 31": row.ProductDescription31, // Product code number
 		"Product Description 32": row.ProductDescription32,
-		HeadingOsEastings:        strconv.Itoa(row.OsEastings),
-		HeadingOsNorthings:       strconv.Itoa(row.OsNorthings),
+		HeadingOsEasting:         strconv.Itoa(row.OsEasting),
+		HeadingOsNorthing:        strconv.Itoa(row.OsNorthing),
 		HeadingWgs84Longitude:    row.Wgs84LongitudeAsString,
 		HeadingWgs84Latitude:     row.Wgs84LatitudeAsString,
 	}
