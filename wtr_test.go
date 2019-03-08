@@ -89,7 +89,7 @@ func TestWTR(t *testing.T) {
 			b := new(bytes.Buffer)
 			writer := bufio.NewWriter(b)
 
-			collection.WriteCsv(writer)
+			collection.WriteCSV(writer)
 			if writer.Size() == 0 {
 				t.Fatal("Failed to write licence file")
 			}

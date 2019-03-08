@@ -235,11 +235,11 @@ func LoadData(csvFileName string) *Collection {
 	}
 	defer csvFile.Close()
 
-	return ReadCsv(csvFile)
+	return ReadCSV(csvFile)
 }
 
-// ReadCsv to read in the OFCOM WTR csv.
-func ReadCsv(reader io.Reader) *Collection {
+// ReadCSV to read in the OFCOM WTR csv.
+func ReadCSV(reader io.Reader) *Collection {
 	header, rawColumns := CSVToMap(bufio.NewReader(reader))
 
 	collection := Collection{header, make([]*Row, len(rawColumns))}
@@ -249,8 +249,8 @@ func ReadCsv(reader io.Reader) *Collection {
 	return &collection
 }
 
-// WriteCsv writes the csv header, then writes the rows.
-func (collection *Collection) WriteCsv(writer io.Writer) {
+// WriteCSV writes the csv header, then writes the rows.
+func (collection *Collection) WriteCSV(writer io.Writer) {
 	w := csv.NewWriter(writer)
 	if err := w.Write(collection.Header); err != nil {
 		log.Fatalf("%v", errors.Wrap(err, "could not write CSV header"))
