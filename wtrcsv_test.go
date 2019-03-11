@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"github.com/pkg/errors"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -78,7 +79,13 @@ func TestWTR(t *testing.T) {
 		})
 
 	// --------------------------------------------------------- load the data
-	collection := LoadData(dataPath)
+	csvFile, err := os.Open(dataPath)
+	if err != nil {
+		log.Fatalln(errors.Wrapf(err, "could not open csv file: \"%s\"", dataPath))
+	}
+	defer csvFile.Close()
+
+	collection := ReadCSV(csvFile)
 	if len(collection.Rows) == 0 {
 		t.Fatal("Failed to read licence file")
 	}
@@ -113,6 +120,16 @@ func TestWTR(t *testing.T) {
 		func(t *testing.T) {
 			if len(collection.Header) != 46 {
 				t.Fatalf("Header wrong number of columns: %v", len(collection.Header))
+			}
+		})
+	// -------------------------------------------------------- Licence Numbers
+	creLicenceNumber := regexp.MustCompile("^(ES)?[0-9]{7}/[0-9]")
+	t.Run("Licence numbers",
+		func(t *testing.T) {
+			for _, row := range collection.Rows {
+				if !creLicenceNumber.MatchString(row.LicenceNumber) {
+					t.Log(row.LicenceNumber)
+				}
 			}
 		})
 	// --------------------------------------------- Product Code & Description

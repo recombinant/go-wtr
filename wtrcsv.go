@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	"io"
 	"log"
-	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -226,16 +225,6 @@ func (row *Row) toMap() map[string]string {
 type Collection struct {
 	Header []string
 	Rows   []*Row
-}
-
-func LoadData(csvFileName string) *Collection {
-	csvFile, err := os.Open(csvFileName)
-	if err != nil {
-		log.Fatalln(errors.Wrapf(err, "could not open csv file: \"%s\"", csvFileName))
-	}
-	defer csvFile.Close()
-
-	return ReadCSV(csvFile)
 }
 
 // ReadCSV to read in the OFCOM WTR csv.
