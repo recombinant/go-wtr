@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"github.com/pkg/errors"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -79,17 +78,23 @@ func TestWTR(t *testing.T) {
 		})
 
 	// --------------------------------------------------------- load the data
-	csvFile, err := os.Open(dataPath)
-	if err != nil {
-		log.Fatalln(errors.Wrapf(err, "could not open csv file: \"%s\"", dataPath))
-	}
-	defer csvFile.Close()
+	var csvFile *os.File
+	var err error
+	var collection *Collection
 
-	collection := ReadCSV(csvFile)
-	if len(collection.Rows) == 0 {
-		t.Fatal("Failed to read licence file")
-	}
+	t.Run("Read test CSV",
+		func(t *testing.T) {
+			csvFile, err = os.Open(dataPath)
+			if err != nil {
+				t.Fatal(errors.Wrapf(err, "could not open csv file: \"%s\"", dataPath))
+			}
+			defer csvFile.Close()
 
+			collection = ReadCSV(csvFile)
+			if len(collection.Rows) == 0 {
+				t.Fatal("Failed to read licence file")
+			}
+		})
 	// -------------------------------------- write the data back (to a buffer)
 	t.Run("Write back",
 		func(t *testing.T) {
